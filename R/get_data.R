@@ -472,3 +472,5 @@ radstofunartekjur_tbl <- radstofunartekjur_tbl |>
 data_ls$radstofunartekjur <- radstofunartekjur_tbl
 
 # 5.0.0 HÚSNÆÐISMARKAÐURINN ----
+
+# 5.1.0 Leiguverð ----
