@@ -192,6 +192,20 @@ data_ls$vidskiptajofnudur <- vidskiptajofnudur_tbl
 
 
 # 3.0.0 VINNUMARKAÐURINN ----
+# Næ í nýjustu upplýsingar af heimasíðu Vinnumálastofnunnar
+
+vmst_page <- read_html(
+  "https://island.is/s/vinnumalastofnun/maelabord-og-toelulegar-upplysingar"
+)
+
+vmst_url <- vmst_page |>
+  html_nodes("a") |>
+  html_attr("href") |>
+  str_subset("\\.xlsm$") |>
+  first()
+
+temp_file <- tempfile(fileext = ".xlsm")
+download.file(vmst_url, temp_file, mode = "wb")
 
 # 3.1.0 Hlutfall starfandi ----
 starfandi_tbl <- read_csv2(
@@ -251,7 +265,7 @@ minnkad_starfshlutfall_tbl <- tibble::tibble(
 # 3.2.1 Lagfæring vegna minnkaðst starfshlutfalls ----
 
 vmst_unemp_tbl <- read_excel(
-  "data/vmst.xlsm",
+  temp_file,
   sheet = "G2",
   range = "C7:RA9"
 ) |>
@@ -283,7 +297,7 @@ minnkad_ratio_tbl <- vmst_unemp_tbl |>
 
 # 3.2.2 Atvinnuleysi ----
 atvinnuleysi_tbl <- read_excel(
-  "data/vmst.xlsm",
+  temp_file,
   sheet = "G3",
   range = "D6:RA8"
 ) |>
@@ -314,7 +328,7 @@ data_ls$atvinnuleysi <- atvinnuleysi_tbl
 
 # 3.2.3 Atvinnuleysi eftir lengd ----
 atvinnuleysi_lengd_tbl <- read_excel(
-  "data/vmst.xlsm",
+  temp_file,
   sheet = "G4",
   range = "B40:RA43"
 )
@@ -478,7 +492,9 @@ data_ls$radstofunartekjur <- radstofunartekjur_tbl
 # 5.1.0 Leiguverð ----
 # Gögn: https://hms.is/gogn-og-maelabord/visitolur
 
-leiguverd_tbl <- read_csv("data/leiguvisitala.csv") |>
+leiguverd_tbl <- read_csv(
+  "https://frs3o1zldvgn.objectstorage.eu-frankfurt-1.oci.customer-oci.com/n/frs3o1zldvgn/b/public_data_for_download/o/leiguvisitala.csv"
+) |>
   clean_names() |>
   mutate(date = make_date(ar, as.numeric(manudur))) |>
   rename("leiguverd" = "visitala") |>
@@ -488,7 +504,9 @@ data_ls$leiguverd <- leiguverd_tbl
 
 
 # 5.2.0 Íbúðaverð ----
-kaupverd_tbl <- read_csv("data/kaupvisitala.csv") |>
+kaupverd_tbl <- read_csv(
+  "https://frs3o1zldvgn.objectstorage.eu-frankfurt-1.oci.customer-oci.com/n/frs3o1zldvgn/b/public_data_for_download/o/kaupvisitala.csv"
+) |>
   clean_names() |>
   mutate(date = make_date(ar, as.character(manudur))) |>
   select(-c(ar, manudur, utgafudagur)) |>
@@ -573,6 +591,8 @@ data_ls$omx15 <- omx15_tbl
 
 # 6.2.0 Skuldabréf ----
 
+skuldabref_old_tbl <- read_csv("data/skuldabref.csv")
+
 skuldabref_tbl <- read_html("https://lanamal.is/") |>
   html_nodes("td") |>
   html_text() |>
@@ -584,7 +604,15 @@ skuldabref_tbl <- read_html("https://lanamal.is/") |>
   mutate(
     price = parse_number(price, locale = locale(decimal_mark = ",")),
     yield = parse_number(yield, locale = locale(decimal_mark = ",")),
-    indexation = if_else(str_detect(bond, "RIKB"), "non-index", "indexed")
+    indexation = if_else(str_detect(bond, "RIKB"), "non-index", "indexed"),
+    date = today()
   )
 
-skuldabref_tbl
+bind_rows(
+  skuldabref_old_tbl,
+  skuldabref_tbl
+) |>
+  distinct() |>
+  write_csv("data/skuldabref.csv")
+
+#
