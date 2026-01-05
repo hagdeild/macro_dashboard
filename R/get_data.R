@@ -689,7 +689,7 @@ krafa_new_ls <- daily_yield_update()
 krafa_new_ls$yields |>
   write_csv(paste0("data/lanamal/", base_path, "krafa.csv"))
 
-if (day(today) == days_in_month(today)) {
+if (day(today()) == days_in_month(today())) {
   temp_krafa_tbl <- list.files("data/lanamal/") |>
     (\(x) paste0(getwd(), "/data/lanamal/", x))() |>
     map(.f = ~ read_csv(.)) |>
@@ -708,9 +708,11 @@ if (day(today) == days_in_month(today)) {
 
   krafa_updated_tbl |>
     write_csv("data/krafa.csv")
+
+  data_ls$krafa <- krafa_updated_tbl
 }
 
-data_ls$krafa <- krafa_updated_tbl
+data_ls$krafa <- krafa_historical_tbl
 
 
 # 6.5.0 Gengi krónunnar ----
@@ -797,7 +799,7 @@ commodities_tbl <- commodity_series |>
 
 data_ls$commodities <- commodities_tbl
 
-# 7.0.0 FERÐAÞJÓNUSTAN ----
+# 7.0.0 FERÐAÞJÓNUSTAN OG KORTAVELTA----
 
 # 7.1.0 Ferðamenn ----
 ferdamenn_tbl <- read_csv2(
@@ -864,3 +866,55 @@ kortavelta_erlend_tbl <- kortavelta_tbl |>
 data_ls$kortavelta_erlend <- kortavelta_erlend_tbl
 
 # 8.0.0 MANNFJÖLDI ----
+
+# 8.1.0 Pýramídi ----
+pyramidi_tbl <-
+  read_csv2(
+    "https://px.hagstofa.is:443/pxis/sq/dc2cdec7-ee1f-4cc2-9385-7fba68f694ea"
+  ) |>
+  set_names("country", "aldur", "kyn", "ar", "fjoldi")
+
+
+cur_max_year <- max(pyramidi_tbl$ar)
+
+pyramidi_tbl <- pyramidi_tbl |>
+  filter(ar %in% c(2000, 2010, 2020, cur_max_year)) |>
+  mutate(
+    fjoldi_plot = if_else(kyn == "Karlar", -fjoldi, fjoldi),
+    aldur = fct_inorder(aldur)
+  )
+
+data_ls$aldurspyramidi <- pyramidi_tbl
+
+# ggplot(pyramidi_plot_tbl, aes(x = fjoldi_plot, y = aldur, fill = kyn)) +
+#   geom_col() +
+#   facet_grid(ar ~ country) +
+#   scale_x_continuous(
+#     labels = \(x) scales::comma(abs(x)),
+#     name = "Fjöldi"
+#   ) +
+#   scale_fill_manual(
+#     values = c("Karlar" = "#4575b4", "Konur" = "#d73027"),
+#     name = NULL
+#   ) +
+#   labs(y = NULL, title = "Aldurspýramídi") +
+#   theme_minimal() +
+#   theme(
+#     legend.position = "top",
+#     strip.text = element_text(face = "bold")
+#   )
+
+# 8.2.0 Aðfluttir umfram brottflutta ----
+flutningar_tbl <- read_csv2(
+  "https://px.hagstofa.is:443/pxis/sq/57b160b4-1553-49b5-8815-c3246d9c5f8d"
+) |>
+  set_names("date", "event", "age", "rikisfang", "value") |>
+  select(-age) |>
+  mutate(date = date(as.yearqtr(str_replace(date, "Á", "Q"))))
+
+data_ls$adfluttir_brottfluttir <- flutningar_tbl
+
+
+# SAVE DATA
+data_ls |>
+  write_rds("full_data.rds")
