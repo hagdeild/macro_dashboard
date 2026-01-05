@@ -6,6 +6,8 @@ library(zoo)
 library(tempdisagg)
 library(readxl)
 library(janitor)
+library(chromote)
+library(rvest)
 
 history_back <- "2015-01-01"
 
@@ -474,3 +476,115 @@ data_ls$radstofunartekjur <- radstofunartekjur_tbl
 # 5.0.0 HÚSNÆÐISMARKAÐURINN ----
 
 # 5.1.0 Leiguverð ----
+# Gögn: https://hms.is/gogn-og-maelabord/visitolur
+
+leiguverd_tbl <- read_csv("data/leiguvisitala.csv") |>
+  clean_names() |>
+  mutate(date = make_date(ar, as.numeric(manudur))) |>
+  rename("leiguverd" = "visitala") |>
+  select(date, leiguverd)
+
+data_ls$leiguverd <- leiguverd_tbl
+
+
+# 5.2.0 Íbúðaverð ----
+kaupverd_tbl <- read_csv("data/kaupvisitala.csv") |>
+  clean_names() |>
+  mutate(date = make_date(ar, as.character(manudur))) |>
+  select(-c(ar, manudur, utgafudagur)) |>
+  select(date, everything()) |>
+  pivot_longer(-date)
+
+data_ls$kaupverd <- kaupverd_tbl
+
+# 5.3.0 Kaupsrká fasteigna ----
+# kaupskra_tbl <- read_csv2("data/kaupskra.csv", locale = locale(encoding = "latin1")) |>
+#   clean_names() |>
+#   mutate(date = floor_date(utgdag, "month"))
+
+# kaupskra_fjoldi_tbl <- kaupskra_tbl |>
+#   group_by(date) |>
+#   summarise(fjoldi = n_distinct(faerslunumer))
+
+# 5.4.0 Týpískt leiguverð ----
+# Scrapa gögn af myigloo.
+# Forsendur: 80-100fm, 2-3 herbergi, íbúð
+
+myigloo_url <- "https://myigloo.is/listings?min_rooms=2&max_rooms=3&min_size=80&max_size=100&listing_type=1&sw_lat=64.03228552326259&sw_lng=-21.997847324902345&ne_lat=64.21971434210539&ne_lng=-21.707396275097658&order_by=-published_at"
+
+# Start Chrome session
+b <- ChromoteSession$new()
+
+# Navigate to the page
+b$Page$navigate(myigloo_url)
+b$Page$loadEventFired() # Wait for page load
+Sys.sleep(3) # Extra wait for JS rendering
+
+# Function to scroll and load content
+scroll_and_load <- function(session, n_scrolls = 5, pause = 2) {
+  for (i in seq_len(n_scrolls)) {
+    session$Runtime$evaluate("window.scrollTo(0, document.body.scrollHeight);")
+    Sys.sleep(pause)
+    message(glue::glue("Scroll {i} of {n_scrolls} complete"))
+  }
+}
+
+# Scroll to load more listings
+scroll_and_load(b, n_scrolls = 10, pause = 2)
+
+# Get the page HTML
+html_result <- b$Runtime$evaluate("document.documentElement.outerHTML")
+page_html <- read_html(html_result$result$value)
+
+# Extract data using your CSS selectors
+myigloo_data <- page_html |>
+  html_elements(".text-color .text-muted-color , .p-tag-label") |>
+  html_text2()
+
+myigloo_data <- myigloo_data[!myigloo_data == "New"]
+
+myigloo_tbl <- myigloo_data |>
+  matrix(ncol = 2, byrow = TRUE) |>
+  as.data.frame() |>
+  as_tibble() |>
+  set_names("verd", "stadur") |>
+  mutate(
+    verd = str_replace(verd, ",", ""),
+    verd = str_remove(verd, " kr"),
+    verd = as.numeric(verd)
+  )
+
+# Clean up
+b$close()
+
+data_ls$myigloo <- myigloo_tbl
+
+# 6.0.0 FJÁRMÁLAMARKAÐURINN ----
+
+# 6.1.0 Hlutabréfaverð ----
+
+omx15_tbl <- read_csv(
+  "https://fred.stlouisfed.org/graph/fredgraph.csv?id=NASDAQOMXI15"
+) |>
+  set_names("date", "value") |>
+  fill(value, .direction = "down")
+
+data_ls$omx15 <- omx15_tbl
+
+# 6.2.0 Skuldabréf ----
+
+skuldabref_tbl <- read_html("https://lanamal.is/") |>
+  html_nodes("td") |>
+  html_text() |>
+  str_squish() |>
+  matrix(ncol = 4, byrow = TRUE) |>
+  as_tibble(.name_repair = "minimal") |>
+  set_names(c("bond", "empty", "price", "yield")) |>
+  select(-empty) |>
+  mutate(
+    price = parse_number(price, locale = locale(decimal_mark = ",")),
+    yield = parse_number(yield, locale = locale(decimal_mark = ",")),
+    indexation = if_else(str_detect(bond, "RIKB"), "non-index", "indexed")
+  )
+
+skuldabref_tbl
