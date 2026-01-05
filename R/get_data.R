@@ -825,4 +825,42 @@ gisting_tbl <- gisting_tbl |>
 data_ls$gistinaetur <- gisting_tbl
 
 # 7.3.0 Kortavelta ----
-# https://sedlabanki.is/gagnatorg/greidslumidlun/
+kortavelta_tbl <- read_excel("data/raw/kortavelta.xlsx", sheet = "Sheet1")
+
+# 7.3.1 heimili ----
+kortavelta_heimila_tbl <- kortavelta_tbl |>
+  slice(8) |>
+  select(-c(1:3)) |>
+  mutate(across(!where(is.numeric), as.numeric)) |>
+  pivot_longer(everything()) |>
+  drop_na() |>
+  select(value) |>
+  mutate(
+    date = seq.Date(
+      from = as.Date("1997-12-01"),
+      by = "month",
+      length.out = nrow(cur_data())
+    )
+  )
+
+data_ls$kortavelta_heimili <- kortavelta_heimila_tbl
+
+# 7.3.2 erlend ----
+kortavelta_erlend_tbl <- kortavelta_tbl |>
+  slice(62) |>
+  select(-c(1:3)) |>
+  mutate(across(!where(is.numeric), as.numeric)) |>
+  pivot_longer(everything()) |>
+  drop_na() |>
+  select(value) |>
+  mutate(
+    date = seq.Date(
+      from = as.Date("2002-09-01"),
+      by = "month",
+      length.out = nrow(cur_data())
+    )
+  )
+
+data_ls$kortavelta_erlend <- kortavelta_erlend_tbl
+
+# 8.0.0 MANNFJÖLDI ----
