@@ -1,1 +1,16 @@
 *.csv
+
+# Quarto build output
+_site/
+.quarto/
+
+# R session files
+.Rproj.user/
+.Rhistory
+.RData
+.Renviron
+
+# OS
+.DS_Store
+Thumbs.db
+/.quarto/

@@ -1,0 +1,16 @@
+---
+title: "Staða íslenska hagkerfisins"
+format:
+    dashboard:
+        theme: flatly
+        scrolling: false
+        css: styles.css
+---
+
+
+```{r, pakkar}
+library(tidyverse)
+library(scales)
+library(plotly)
+
+```
