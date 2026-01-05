@@ -9,6 +9,10 @@ library(janitor)
 library(chromote)
 library(rvest)
 library(timetk)
+library(YieldCurve)
+library(fredr)
+
+fredr_set_key(Sys.getenv("FRED_API_KEY"))
 
 source("R/hjalparfoll.R")
 
@@ -16,12 +20,49 @@ history_back <- "2015-01-01"
 
 data_ls <- list()
 
+
 # 1.0.1 Hjálparföll ----
 fix_date <- function(data) {
   data %>%
     mutate(date = make_date(str_sub(manudur, 1, 4), str_sub(manudur, 6, 7)))
 }
 
+
+# 1.1.0 dates ----
+year_use <- year(today())
+month_use <- month(today())
+month_use <- if_else(
+  nchar(month_use) == 1,
+  paste0("0", month_use),
+  as.character(month_use)
+)
+day_use <- day(today())
+day_use <- if_else(
+  nchar(day_use) == 1,
+  paste0("0", day_use),
+  as.character(day_use)
+)
+
+base_path <- paste0(year_use, "-", month_use, "-", day_use, "_")
+
+# manudir
+man_tbl <- tibble(
+  manudir = c(
+    "Janúar",
+    "Febrúar",
+    "Mars",
+    "Apríl",
+    "Maí",
+    "Júní",
+    "Júlí",
+    "Ágúst",
+    "September",
+    "Október",
+    "Nóvember",
+    "Desember"
+  ),
+  man_no = 1:12
+)
 
 # 1.1.0 Sameiginleg gögn ----
 
@@ -637,3 +678,151 @@ data_ls$styrivextir <- styrivextir_upd_tbl
 
 styrivextir_upd_tbl |>
   write_csv("data/styrivextir.csv")
+
+
+# 6.4.0 Krafa ríkisskuldabréfa ----
+
+krafa_historical_tbl <- read_csv("data/krafa.csv")
+
+krafa_new_ls <- daily_yield_update()
+
+krafa_new_ls$yields |>
+  write_csv(paste0("data/lanamal/", base_path, "krafa.csv"))
+
+if (day(today) == days_in_month(today)) {
+  temp_krafa_tbl <- list.files("data/lanamal/") |>
+    (\(x) paste0(getwd(), "/data/lanamal/", x))() |>
+    map(.f = ~ read_csv(.)) |>
+    bind_rows()
+
+  kraf_new_tbl <- temp_krafa_tbl |>
+    mutate(date = floor_date(date, "month")) |>
+    group_by(date) |>
+    mutate(
+      overdtryggd_5_ara = mean(overdtryggd_5_ara, na.rm = TRUE),
+      overdtryggd_10_ara = mean(overdtryggd_10_ara, na.rm = TRUE)
+    )
+
+  krafa_updated_tbl <- krafa_historical_tbl |>
+    bind_rows(kraf_new_tbl)
+
+  krafa_updated_tbl |>
+    write_csv("data/krafa.csv")
+}
+
+data_ls$krafa <- krafa_updated_tbl
+
+
+# 6.5.0 Gengi krónunnar ----
+gengi_tbl <- read_csv2("data/raw/gengisvisitala.csv") |>
+  select(1:2) |>
+  set_names("date", "gengi") |>
+  mutate(date = dmy(date)) |>
+  arrange(date)
+
+
+b <- ChromoteSession$new()
+
+# Navigate and wait for JS to render
+b$Page$navigate(
+  "https://sedlabanki.is/gagnatorg/opinber-gengisskraning/#tab-gengisvisitolur"
+)
+b$Page$loadEventFired()
+Sys.sleep(3) # Give JS time to populate the data
+
+# Get rendered HTML
+html_result <- b$Runtime$evaluate("document.documentElement.outerHTML")
+page_html <- read_html(html_result$result$value)
+
+# Extract the values
+gengisvísitala <- page_html |>
+  html_node(".currency-data-bar-currency-latest-value") |>
+  html_text() |>
+  str_replace(",", ".") |>
+  as.numeric()
+
+date_text <- page_html |>
+  html_node("div[b-vcnxm8ta2s]") |>
+  html_text() |>
+  str_extract("\\d{2}\\.\\d{2}\\.\\d{4}") |>
+  dmy()
+
+# Clean up
+b$close()
+
+gengi_new <-
+  tibble(
+    date = date_text,
+    gengi = gengisvísitala
+  )
+
+if (!date_text %in% unique(gengi_tbl$date)) {
+  gengi_tbl <- gengi_tbl |>
+    bind_rows(gengi_new)
+}
+
+data_ls$gengi <- gengi_tbl
+
+# 6.6.0 Hrávöruverð ----
+commodity_series <- tribble(
+  ~series_id     , ~name     ,
+  "DCOILBRENTEU" , "brent"   ,
+  "PCOFFOTMUSDM" , "coffee"  ,
+  "PSUGAISAUSDM" , "sugar"   ,
+  "PCOCOUSDM"    , "cocoa"   ,
+  "PWHEAMTUSDM"  , "wheat"   ,
+  "PBANSOPUSDM"  , "bananas" ,
+  "PRICENPQUSDM" , "rice"    ,
+  "PMAIZMTUSDM"  , "corn"
+)
+
+commodities_tbl <- commodity_series |>
+  mutate(data = map(series_id, \(x) fredr(x))) |>
+  unnest(data, names_sep = "_") |>
+  select(date = data_date, name, value = data_value) |>
+  drop_na() |>
+  mutate(
+    name = recode(
+      name,
+      "brent" = "Olíuverð",
+      "coffee" = "Kaffi",
+      "sugar" = "Sykur",
+      "cocoa" = "Kakó",
+      "wheat" = "Hveiti",
+      "bananas" = "Bananar",
+      "rice" = "Hrísgrjón",
+      "corn" = "Maís"
+    )
+  )
+
+data_ls$commodities <- commodities_tbl
+
+# 7.0.0 FERÐAÞJÓNUSTAN ----
+
+# 7.1.0 Ferðamenn ----
+ferdamenn_tbl <- read_csv2(
+  "https://px.hagstofa.is:443/pxis/sq/851de9af-0207-44b4-ac0f-0731124053f8"
+) |>
+  set_names("date", "Íslendingar", "Útlendingar") |>
+  mutate(date = make_date(str_sub(date, 1, 4), str_sub(date, 6, 7))) |>
+  pivot_longer(cols = -date)
+
+data_ls$ferdamenn <- ferdamenn_tbl
+
+
+# 7.2.0 Gistinætur ----
+gisting_tbl <- read_csv2(
+  "https://px.hagstofa.is:443/pxis/sq/10c45e6f-ea41-49ff-90d5-5fae6a444ea0"
+) |>
+  set_names("manudir", "rikisfang", "ar", "eining", "fjoldi") |>
+  select(-eining) |>
+  left_join(man_tbl)
+
+gisting_tbl <- gisting_tbl |>
+  mutate(date = make_date(ar, man_no)) |>
+  select(date, rikisfang, fjoldi)
+
+data_ls$gistinaetur <- gisting_tbl
+
+# 7.3.0 Kortavelta ----
+# https://sedlabanki.is/gagnatorg/greidslumidlun/
