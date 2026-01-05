@@ -8,6 +8,9 @@ library(readxl)
 library(janitor)
 library(chromote)
 library(rvest)
+library(timetk)
+
+source("R/hjalparfoll.R")
 
 history_back <- "2015-01-01"
 
@@ -615,4 +618,22 @@ bind_rows(
   distinct() |>
   write_csv("data/skuldabref.csv")
 
-#
+# 6.3.0 Stýrivextir ----
+styrivextir_tbl <- read_csv("data/styrivextir.csv")
+
+styrivextir_new_tbl <- get_iceland_rate() |>
+  set_names("date", "styrivextir")
+
+
+styrivextir_upd_tbl <- bind_rows(
+  styrivextir_tbl,
+  styrivextir_new_tbl
+) |>
+  pad_by_time(.date_var = "date", .pad_value = NA) |>
+  fill(styrivextir, .direction = "down")
+
+
+data_ls$styrivextir <- styrivextir_upd_tbl
+
+styrivextir_upd_tbl |>
+  write_csv("data/styrivextir.csv")
