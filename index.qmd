@@ -92,7 +92,7 @@ vr_layout(p1, tooltip = "text") |>
 ```
 
 
-```{r}
+```{r, gdp_per_cap}
 p2 <- data_ls$gdp_per_cap |> 
   # filter(year(date) >= date_from_max_back) |> 
   # group_by(skipting) |> 
@@ -161,5 +161,112 @@ vr_layout(p4)
 ## Row
 
 ```{r, hlutfall_starfandi}
+p5 <- data_ls$starfandi |> 
+  ggplot(aes(date, hlutfall_starfandi)) + 
+  geom_line() +
+  geom_smooth(se = FALSE, span = 0.3) +
+  theme_minimal() +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Hlutfall starfandi"
+  ) +
+  scale_y_continuous(labels = percent)
+
+vr_layout(p5)
+```
+
+
+
+```{r, atvinnuleysi}
+p6 <- data_ls$atvinnuleysi |> 
+  rename("Atvinnuleysi" = "atvinnuleysi") |> 
+  left_join(data_ls$atvinnuleysi_langtima |> rename("Langtíma atvinnuleysi" = "atvinnuleysi")) |> 
+  drop_na() |> 
+  pivot_longer(cols = -date) |> 
+  ggplot(aes(date, value, col = name)) + 
+  geom_line() + 
+  theme_minimal() +
+  theme(
+    legend.title = element_blank(),
+    legend.position = "bottom"
+  ) + 
+  scale_y_continuous(labels = percent) + 
+  scale_color_manual(values = vr_litir) +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Atvinnuleysi og langtíma atvinnuleysi (12 mánuðir og lengur)"
+  )
+
+vr_layout(p6)
+```
+
+
+## Row
+
+
+```{r, auglyst_storf}
+# auglýst störf og vinnulitlir
+auglyst_storf_tbl <- data_ls$laus_storf |> 
+  mutate(hlutfall = laus_storf / fjoldi_starfa) |> 
+  select(-c(laus_storf, fjoldi_starfa))
+
+p7 <- auglyst_storf_tbl |> 
+  ggplot(aes(date, hlutfall)) +
+  geom_line() +
+  theme_minimal() +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Laus störf sem hlutfall af heildarfjölda starfa"
+  ) +
+  scale_y_continuous(labels = percent)
+
+vr_layout(p7)
+
+```
+
+
+```{r, vinnulitlir}
+# Hlutastörf
+hlutastorf_tbl <- data_ls$vinnulitlir
+
+p8 <- hlutastorf_tbl |> 
+  ggplot(aes(date, hlutfall, col = eining)) + 
+  geom_line() +
+  theme_minimal() +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Vinnulitlir"
+  ) +
+  scale_y_continuous(labels = percent) +
+  scale_color_manual(values = vr_litir) + 
+  theme_minimal() +
+  theme(
+    legend.title = element_blank(),
+    legend.position = "bottom"
+  )
+
+vr_layout(p8)
+```
+
+
+```{r, framleidni}
+p9 <- data_ls$framleidni |> 
+  filter(date >= "2015-01-01") |> 
+  mutate(prod = prod / prod[1] * 100) |> 
+  ggplot(aes(date, prod)) +
+  geom_line() +
+  geom_smooth(se = FALSE, span = 0.3) + 
+  theme_minimal() +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Framleiðni vinnuafls"
+  )
+
+vr_layout(p9)
 
 ```
