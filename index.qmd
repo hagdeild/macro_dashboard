@@ -24,7 +24,7 @@ valuebox_litir <- c("#2E7D6E", "#E57373", "#F9A825")
 # Date
 date_back_year     <- floor_date(today(), "year") - months(12)
 date_from_max_back <- year(today()) - 4
-
+date_from_x <- "2020-01-01"
 # Texti
 
 ```
@@ -180,6 +180,7 @@ vr_layout(p5)
 
 ```{r, atvinnuleysi}
 p6 <- data_ls$atvinnuleysi |> 
+  filter(date >= date_from_x) |> 
   rename("Atvinnuleysi" = "atvinnuleysi") |> 
   left_join(data_ls$atvinnuleysi_langtima |> rename("Langtíma atvinnuleysi" = "atvinnuleysi")) |> 
   drop_na() |> 
@@ -209,6 +210,7 @@ vr_layout(p6)
 ```{r, auglyst_storf}
 # auglýst störf og vinnulitlir
 auglyst_storf_tbl <- data_ls$laus_storf |> 
+  filter(date >= date_from_x) |> 
   mutate(hlutfall = laus_storf / fjoldi_starfa) |> 
   select(-c(laus_storf, fjoldi_starfa))
 
@@ -233,6 +235,7 @@ vr_layout(p7)
 hlutastorf_tbl <- data_ls$vinnulitlir
 
 p8 <- hlutastorf_tbl |> 
+  filter(date >= date_from_x) |> 
   ggplot(aes(date, hlutfall, col = eining)) + 
   geom_line() +
   theme_minimal() +
@@ -255,7 +258,7 @@ vr_layout(p8)
 
 ```{r, framleidni}
 p9 <- data_ls$framleidni |> 
-  filter(date >= "2015-01-01") |> 
+  filter(date >= date_from_x) |> 
   mutate(prod = prod / prod[1] * 100) |> 
   ggplot(aes(date, prod)) +
   geom_line() +
@@ -269,4 +272,175 @@ p9 <- data_ls$framleidni |>
 
 vr_layout(p9)
 
+```
+
+
+# Laun
+
+## Row
+
+```{r, launavisitala_hagstofu}
+launavisitala_tbl <- data_ls$launavisitala |>
+  filter(date >= date_from_x) |> 
+  mutate(date = floor_date(date, "quarter")) |> 
+  group_by(date) |> 
+  summarise(launavisitala = mean(launavisitala)) |> 
+  mutate(Launavísitala = launavisitala / lag(launavisitala, 4) - 1) |> 
+  drop_na() |> 
+  select(-launavisitala)
+
+radstofunartekjur_tbl <- data_ls$radstofunartekjur |>
+  mutate("Ráðstöfunartekjur" = value / lag(value, 4) - 1) |>
+  drop_na() |> 
+  select(-value)
+
+p10 <- radstofunartekjur_tbl |> 
+  left_join(launavisitala_tbl) |> 
+  drop_na() |> 
+  filter(date >= "2020-01-01") |>
+  pivot_longer(cols = -date) |> 
+  ggplot(aes(date, value, fill = name)) +
+  geom_col(position = "dodge") +
+  scale_fill_manual(values = vr_litir) + 
+  scale_y_continuous(labels = percent) + 
+  theme_minimal() +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Launavísitala Hagstofu og ráðstöfunartekjur, breyting frá samatíma árið á undan"
+  )
+
+vr_layout(p10)
+
+```
+
+
+```{r, laun_starfsstett}
+p11 <- data_ls$laun_starfsstett |> 
+  filter(date >= date_from_x) |> 
+  group_by(starfsstett) |> 
+  mutate(visitala = visitala / visitala[1] * 100) |> 
+  ungroup() |> 
+  ggplot(aes(date, visitala, col = starfsstett)) + 
+  geom_line() +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank(),
+    legend.position = "bottom"
+  ) +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Launaþróun eftir starfsstétt"
+  ) +
+  scale_color_manual(values = vr_litir)
+
+vr_layout(p11)
+```
+
+
+## Row
+
+```{r, launþegahopar}
+p12 <- data_ls$laun_hopur |> 
+  filter(date >= date_from_x) |> 
+  group_by(hopur) |> 
+  mutate(visitala = visitala / visitala[1] * 100) |> 
+  ungroup() |> 
+  ggplot(aes(date, visitala, col = hopur)) + 
+  geom_line() +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank(),
+    legend.position = "bottom"
+  ) +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Launaþróun eftir launþegahóp"
+  ) +
+  scale_color_manual(values = vr_litir)
+
+vr_layout(p12)
+```
+
+
+
+```{r, starfsheiti}
+p13 <- data_ls$laun_atvinnugrein |> 
+  filter(date >= date_from_x) |> 
+  group_by(atvinnugrein) |> 
+  mutate(visitala = visitala / visitala[1] * 100) |> 
+  ungroup() |> 
+  mutate(visitala = visitala / visitala[1] * 100) |> 
+  ggplot(aes(date, visitala, col = atvinnugrein)) + 
+  geom_line() +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank(),
+    legend.position = "bottom"
+  ) +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Launaþróun eftir atvinnugrein"
+  ) +
+  scale_color_manual(values = vr_litir)
+
+vr_layout(p13)
+```
+
+
+# Húsnæðisverð
+
+## Row
+
+```{r, husnaedisver}
+p14 <- data_ls$kaupverd |> 
+  mutate(
+    name = 
+      case_when(
+        name == "visitala" ~ "Vísitala kaupverðs",
+        name == "visitala_hofudborgarsvaedi" ~ "Höfuðborgarsvæðið",
+        name == "visitala_landsbyggd" ~ "Landsbyggðin",
+        name == "visitala_serbyli_hofudborgarsvaedi" ~ "Sérbýli á höfuðborgarsvæðinu",
+        name == "visitala_fjolbyli_hofudborgarsvaedi" ~ "Fjölbýli á höfuðborgarsvæðinu",
+        name == "visitala_serbyli_landsbyggd" ~ "Sérbýli landsbyggðin",
+        TRUE ~ "Fjölbýli landsbyggðin"
+      )
+  ) |> 
+  group_by(name) |> 
+  mutate(value = value / value[1] * 100) |> 
+  ungroup() |> 
+  ggplot(aes(date, value, col = name)) + 
+  geom_line() + 
+  theme_minimal() +
+  theme(
+    legend.title = element_blank(),
+    legend.position = "bottom"
+  ) +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Vísitala fasteignaverðs"
+  ) +
+  scale_color_manual(values = vr_litir)
+
+vr_layout(p14)
+```
+
+
+
+```{r, leiguverð}
+p15 <- data_ls$leiguverd |> 
+  ggplot(aes(date, leiguverd)) + 
+  geom_line() +
+  theme_minimal() +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Vísitala leiguverðs"
+  )
+
+vr_layout(p15)
 ```
