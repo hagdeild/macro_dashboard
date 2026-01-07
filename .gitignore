@@ -14,3 +14,7 @@ _site/
 .DS_Store
 Thumbs.db
 /.quarto/
+
+# Quarto rendered output dependencies
+*_files/
+*.html

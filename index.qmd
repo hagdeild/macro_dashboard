@@ -12,5 +12,154 @@ format:
 library(tidyverse)
 library(scales)
 library(plotly)
+```
+
+```{r, data og annað}
+data_ls <- read_rds("full_data.rds")
+
+# Litir
+vr_litir <- c("#00305c", "#028fbc", "#eec215", "#d64550", "#4fb94f", "#7d5ba6", "#e07b39", "#3a8e8e")
+valuebox_litir <- c("#2E7D6E", "#E57373", "#F9A825")
+
+# Date
+date_back_year     <- floor_date(today(), "year") - months(12)
+date_from_max_back <- year(today()) - 4
+
+# Texti
+
+```
+
+```{r, hjalparfoll}
+# VR plot layout
+vr_layout <- function(plot, tooltip = c("x", "y", "colour", "text")) {
+  plotly::ggplotly(plot, tooltip = tooltip) |>
+    plotly::layout(
+      legend = list(
+        title = list(text = ""),
+        orientation = "h",
+        y = -0.2,
+        x = 0.5,
+        xanchor = "center"
+      )
+    )
+}
+```
+
+
+# Þjóðhagsreikningar
+
+## Row
+
+```{r, gdp_components}
+gdp_comp_use <- c("Einkaneysla", "Samneysla", "Fjárfesting alls", "Innflutningur", "Útflutningur", "Verg Landsframleiðsla")
+
+p1 <- data_ls$gdp_comp |> 
+  filter(skipting %in% gdp_comp_use) |> 
+  arrange(date, skipting) |> 
+  group_by(skipting) |> 
+  mutate(
+    delta = value / lag(value, 4) - 1,
+    skipting = factor(skipting, levels = gdp_comp_use),
+    tooltip_text = glue::glue(
+    "{skipting}\n",
+    "Dags: {format(date, '%Y-%m')}\n",
+    "Breyting: {scales::percent(delta, accuracy = 0.1)}"
+    )
+    ) |> 
+  ungroup() |> 
+  drop_na() |> 
+  filter(year(date) >= date_from_max_back) |> 
+  ggplot(aes(date, delta, text = tooltip_text)) + 
+  geom_col(fill = vr_litir[1]) + 
+  facet_wrap(~ skipting) +
+  theme_minimal() +
+  scale_y_continuous(labels = percent) +
+  labs(
+    x = NULL,
+    y = NULL
+    #subtitle = "Innflutningur kemur til frádráttar í landsframleiðslu"
+  )
+
+vr_layout(p1, tooltip = "text") |> 
+  layout(
+    title = list(
+      text = "Innflutningur kemur til frádráttar í landsframleiðslu",
+      font = list(size = 14),
+      x = 0,
+      xanchor = "left"
+    )
+  )
+```
+
+
+```{r}
+p2 <- data_ls$gdp_per_cap |> 
+  # filter(year(date) >= date_from_max_back) |> 
+  # group_by(skipting) |> 
+  # mutate(index = index / index[1] * 100) |> 
+  # ungroup() |> 
+
+  ggplot(aes(date, index, col = skipting)) + 
+  geom_line() +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Einkaneysla og landsframleiðsla á mann"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.title = element_blank()
+  ) +
+  scale_color_manual(values = vr_litir)
+  
+vr_layout(p2)
+```
+
+
+## Row
+
+```{r, hagvoxtur}
+p3 <- data_ls$gdp_per_cap |> 
+  filter(str_detect(skipting, "Verg")) |> 
+  mutate(
+    "gdp_gr_per_cap" = index / lag(index, 4) - 1
+  ) |> 
+  ggplot(aes(date, gdp_gr_per_cap)) +
+  geom_col(fill = vr_litir[1]) +
+  theme_minimal() +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Hagvöxtur á mann"
+  ) +
+  scale_y_continuous(labels = percent)
+
+vr_layout(p3)
+```
+
+
+
+```{r, Viðskiptajöfnuður}
+p4 <- data_ls$vidskiptajofnudur |> 
+  ggplot(aes(date, hlutfall)) +
+  geom_line() + 
+  geom_smooth(se = FALSE, span = 0.2, lwd = 0.8) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  theme_minimal() +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Viðskiptajöfnuður (hlutfall af landsframleiðslu)"
+  )
+
+vr_layout(p4)
+```
+
+
+# Vinnumarkaðurinn
+
+## Row
+
+```{r, hlutfall_starfandi}
 
 ```
