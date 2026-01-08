@@ -80,15 +80,15 @@ p1 <- data_ls$gdp_comp |>
     #subtitle = "Innflutningur kemur til frádráttar í landsframleiðslu"
   )
 
-vr_layout(p1, tooltip = "text") |> 
-  layout(
-    title = list(
-      text = "Innflutningur kemur til frádráttar í landsframleiðslu",
-      font = list(size = 14),
-      x = 0,
-      xanchor = "left"
-    )
-  )
+vr_layout(p1, tooltip = "text")
+  # layout(
+  #   title = list(
+  #     text = "Innflutningur kemur til frádráttar í landsframleiðslu",
+  #     font = list(size = 14),
+  #     x = 0,
+  #     xanchor = "left"
+  #   )
+  # )
 ```
 
 
@@ -262,7 +262,7 @@ p9 <- data_ls$framleidni |>
   mutate(prod = prod / prod[1] * 100) |> 
   ggplot(aes(date, prod)) +
   geom_line() +
-  geom_smooth(se = FALSE, span = 0.3) + 
+  geom_smooth(se = FALSE, span = 0.4) + 
   theme_minimal() +
   labs(
     x = NULL,
@@ -307,7 +307,7 @@ p10 <- radstofunartekjur_tbl |>
   labs(
     x = NULL,
     y = NULL,
-    title = "Launavísitala Hagstofu og ráðstöfunartekjur, breyting frá samatíma árið á undan"
+    title = "Launavísitala Hagstofu og ráðstöfunartekjur, breyting frá sama tíma árið á undan"
   )
 
 vr_layout(p10)
@@ -357,7 +357,8 @@ p12 <- data_ls$laun_hopur |>
   labs(
     x = NULL,
     y = NULL,
-    title = "Launaþróun eftir launþegahóp"
+    title = "Launaþróun eftir launþegahóp",
+    caption = "test"
   ) +
   scale_color_manual(values = vr_litir)
 
@@ -370,7 +371,10 @@ vr_layout(p12)
 p13 <- data_ls$laun_atvinnugrein |> 
   filter(date >= date_from_x) |> 
   group_by(atvinnugrein) |> 
-  mutate(visitala = visitala / visitala[1] * 100) |> 
+  mutate(
+    visitala = visitala / visitala[1] * 100,
+    breyting = visitala / 100 - 1
+    ) |> 
   ungroup() |> 
   mutate(visitala = visitala / visitala[1] * 100) |> 
   ggplot(aes(date, visitala, col = atvinnugrein)) + 
@@ -391,7 +395,7 @@ vr_layout(p13)
 ```
 
 
-# Húsnæðisverð
+# Húsnæðis- og leiguverð
 
 ## Row
 
@@ -444,3 +448,27 @@ p15 <- data_ls$leiguverd |>
 
 vr_layout(p15)
 ```
+
+
+## Row
+
+```{r, typical_price}
+p16 <- data_ls$myigloo |> separate_wider_delim(cols = stadur, delim = " ", names = c("pnr", "stadur"), too_many = "merge") |> 
+  ggplot(aes(x = reorder(stadur, verd, median), y = verd)) +
+  geom_boxplot(outlier.shape = NA, fill = "steelblue", alpha = 0.3) +
+  geom_jitter(width = 0.2, alpha = 0.6, color = "steelblue") +
+  scale_y_continuous(labels = scales::label_number(big.mark = ".", decimal.mark = ",")) +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Leiguverð eftir staðsetningu skv. MyIgloo"
+    ) +
+  coord_flip() +
+  theme_minimal() 
+
+vr_layout(p16)
+
+```
+
+
+# Fjármálamarkaðurinn

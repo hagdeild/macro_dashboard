@@ -572,7 +572,8 @@ data_ls$kaupverd <- kaupverd_tbl
 # Scrapa gögn af myigloo.
 # Forsendur: 80-100fm, 2-3 herbergi, íbúð
 
-myigloo_url <- "https://myigloo.is/listings?min_rooms=2&max_rooms=3&min_size=80&max_size=100&listing_type=1&sw_lat=64.03228552326259&sw_lng=-21.997847324902345&ne_lat=64.21971434210539&ne_lng=-21.707396275097658&order_by=-published_at"
+#myigloo_url <- "https://myigloo.is/listings?min_rooms=2&max_rooms=3&min_size=80&max_size=100&listing_type=1&sw_lat=64.03228552326259&sw_lng=-21.997847324902345&ne_lat=64.21971434210539&ne_lng=-21.707396275097658&order_by=-published_at"
+myigloo_url <- "https://myigloo.is/listings?min_size=80&max_size=120&listing_type=1&order_by=-published_at"
 
 # Start Chrome session
 b <- ChromoteSession$new()
@@ -592,7 +593,7 @@ scroll_and_load <- function(session, n_scrolls = 5, pause = 2) {
 }
 
 # Scroll to load more listings
-scroll_and_load(b, n_scrolls = 10, pause = 2)
+scroll_and_load(b, n_scrolls = 40, pause = 2)
 
 # Get the page HTML
 html_result <- b$Runtime$evaluate("document.documentElement.outerHTML")
@@ -915,6 +916,6 @@ flutningar_tbl <- read_csv2(
 data_ls$adfluttir_brottfluttir <- flutningar_tbl
 
 
-# SAVE DATA
+# SAVE DATA ----
 data_ls |>
   write_rds("full_data.rds")
