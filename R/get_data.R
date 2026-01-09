@@ -11,6 +11,7 @@ library(rvest)
 library(timetk)
 library(YieldCurve)
 library(fredr)
+library(tidyquant)
 
 fredr_set_key(Sys.getenv("FRED_API_KEY"))
 
@@ -626,20 +627,60 @@ data_ls$myigloo <- myigloo_tbl
 
 # 6.1.0 Hlutabréfaverð ----
 
+# 6.1.1 OMX15
+
+# one time
+# omxi15_hist_tbl <- data.table::fread("data/raw/omxi15.csv") |>
+#   as_tibble() |>
+#   clean_names() |>
+#   select(date, closing_price)
+
+# omxi15_hist_tbl <- omxi15_hist_tbl |>
+#   set_names("date", "price") |>
+#   mutate(
+#     price = as.numeric(str_remove(price, ",")),
+#     date = date(date)
+#   ) |>
+#   arrange(date)
+
+omxi15_hist_tbl <- read_csv("data/raw/omxi15.csv")
+
+
 omx15_tbl <- read_csv(
   "https://fred.stlouisfed.org/graph/fredgraph.csv?id=NASDAQOMXI15"
 ) |>
-  set_names("date", "value") |>
-  fill(value, .direction = "down")
+  set_names("date", "price") |>
+  fill(price, .direction = "down") |>
+  filter(date > max(omxi15_hist_tbl$date))
 
-data_ls$omx15 <- omx15_tbl
+omx15_tbl <- omx15_tbl |>
+  bind_rows(omxi15_hist_tbl)
+
+omx15_tbl |>
+  write_csv("data/raw/omxi15.csv")
+
+# 6.1.2 S&P 500
+sp500 <- tq_get("^GSPC", from = "2020-01-01") |>
+  select(date, close) |>
+  set_names("date", "SP500")
+
+# 6.1.3 save stock prices
+
+stocks_tbl <- omx15_tbl |>
+  rename("OMXI15" = "price") |>
+  left_join(sp500) |>
+  drop_na() |>
+  pivot_longer(cols = -date)
+
+data_ls$stocks <- stocks_tbl
+
 
 # 6.2.0 Skuldabréf ----
 
 skuldabref_old_tbl <- read_csv("data/skuldabref.csv")
 
 skuldabref_tbl <- read_html("https://lanamal.is/") |>
-  html_nodes("td") |>
+  html_nodes(".text-right , .table-striped .text-center , .fixed-width") |>
   html_text() |>
   str_squish() |>
   matrix(ncol = 4, byrow = TRUE) |>
@@ -651,14 +692,19 @@ skuldabref_tbl <- read_html("https://lanamal.is/") |>
     yield = parse_number(yield, locale = locale(decimal_mark = ",")),
     indexation = if_else(str_detect(bond, "RIKB"), "non-index", "indexed"),
     date = today()
-  )
+  ) |>
+  drop_na()
 
-bind_rows(
+skuldabref_uppdated_tbl <- bind_rows(
   skuldabref_old_tbl,
   skuldabref_tbl
 ) |>
-  distinct() |>
+  distinct()
+
+skuldabref_uppdated_tbl |>
   write_csv("data/skuldabref.csv")
+
+data_ls$skuldabref <- skuldabref_uppdated_tbl
 
 # 6.3.0 Stýrivextir ----
 styrivextir_tbl <- read_csv("data/styrivextir.csv")

@@ -472,3 +472,10 @@ vr_layout(p16)
 
 
 # Fjármálamarkaðurinn
+
+## Row
+
+```{r, hlutabrefaverd}
+data_ls$stocks
+
+```
