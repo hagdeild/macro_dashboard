@@ -150,6 +150,8 @@ qmm_tbl <- qmm_tbl |>
     across(where(is.character), as.numeric)
   )
 
+data_ls$qmm <- qmm_tbl
+
 # 1.1.4 Vísitala neysluverðs ----
 vnv_tbl <-
   read_csv2(
@@ -164,7 +166,30 @@ vnv_tbl <-
 vnv_qrt_tbl <- qmm_tbl |>
   select(date, cpi)
 
-# 2.0.0 ÞJÓÐHAG STÆRÐIR ----
+# 1.1.5 VLF á nafnvirði ----
+gdp_nominal_qrt_tbl <-
+  read_csv2(
+    "https://px.hagstofa.is:443/pxis/sq/e5cc940e-34fd-40da-b1d3-4b83e803e626"
+  ) |>
+  select(-2) |>
+  set_names("date", "gdp_q_nominal") |>
+  mutate(
+    date = str_replace(date, "Á", "Q"),
+    date = date(as.yearqtr(date)),
+    gdp_q_sum = rollapplyr(gdp_q_nominal, width = 4, FUN = sum, partial = TRUE)
+  )
+
+gdp_nominal_yearly_tbl <-
+  read_csv2(
+    "https://px.hagstofa.is:443/pxis/sq/e6ee51bd-5313-43e0-a325-cc940b2a87b9",
+    locale = locale(encoding = "latin1")
+  ) |>
+  select(-2) |>
+  set_names("date", "gdp_nominal")
+
+# * ----
+
+# 2.0.0 MACRO/FISCAL ----
 # Keðjutengt verðmæti, árstíðarleiðrétt
 
 gdp_comp_tbl <- read_csv2(
@@ -236,7 +261,242 @@ vidskiptajofnudur_tbl <- vidskiptajofnudur_tbl |>
 data_ls$vidskiptajofnudur <- vidskiptajofnudur_tbl
 
 
+# 2.3.0 Undirliggjandi verðbólga ----
+
+# eldri
+vnv_undirliggjandi_eldri_tbl <-
+  read_csv2(
+    "https://px.hagstofa.is:443/pxis/sq/aa9cd45e-3e8b-4deb-9d48-ac20afa7636b",
+    na = "."
+  ) |>
+  drop_na() |>
+  clean_names() |>
+  select(-lidur) |>
+  mutate(date = make_date(str_sub(manudur, 1, 4), str_sub(manudur, 6, 7))) |>
+  select(-manudur) |>
+  set_names("visitala", "gildi", "date")
+
+
+# ný
+vnv_undirliggjandi_nyrri_tbl <-
+  read_csv2(
+    "https://px.hagstofa.is:443/pxis/sq/6ab25269-7342-4a08-b850-e677f94e0bab"
+  ) |>
+  clean_names() |>
+  select(-lidur) |>
+  mutate(date = make_date(str_sub(manudur, 1, 4), str_sub(manudur, 6, 7))) |>
+  select(-manudur) |>
+  set_names("visitala", "gildi", "date")
+
+# Merge the two datasets
+# First, standardize visitala names
+vnv_undirliggjandi_eldri_tbl <- vnv_undirliggjandi_eldri_tbl |>
+  mutate(
+    visitala = case_when(
+      str_detect(visitala, "Kjarnavísitala 1") ~ "Kjarnavísitala_1",
+      str_detect(visitala, "Kjarnavísitala 2") ~ "Kjarnavísitala_2",
+      str_detect(visitala, "Kjarnavísitala 3") ~ "Kjarnavísitala_3",
+      TRUE ~ "Kjarnavísitala_4"
+    )
+  )
+
+vnv_undirliggjandi_nyrri_tbl <- vnv_undirliggjandi_nyrri_tbl |>
+  mutate(
+    visitala = case_when(
+      str_detect(visitala, "Kjarnavisitala_1") ~ "Kjarnavísitala_1",
+      str_detect(visitala, "Kjarnavisitala_2") ~ "Kjarnavísitala_2",
+      str_detect(visitala, "Kjarnavisitala_4") ~ "Kjarnavísitala_4",
+      str_detect(visitala, "Kjarnavisitala_5") ~ "Kjarnavísitala_5",
+      TRUE ~ visitala
+    )
+  )
+
+# Chain the new series to the old one
+# Find the first date of the new series to use as cutoff
+first_date_new <- min(vnv_undirliggjandi_nyrri_tbl$date)
+
+# Get the old series value at the last date BEFORE the new series starts
+scaling_factors_tbl <- vnv_undirliggjandi_eldri_tbl |>
+  filter(date < first_date_new) |>
+  group_by(visitala) |>
+  filter(date == max(date)) |>
+  select(visitala, last_value_old = gildi, last_date_old = date) |>
+  ungroup() |>
+  left_join(
+    vnv_undirliggjandi_nyrri_tbl |>
+      filter(date == first_date_new) |>
+      select(visitala, first_value_new = gildi),
+    by = "visitala"
+  ) |>
+  mutate(scaling_factor = last_value_old / first_value_new)
+
+# Apply scaling to new series
+vnv_undirliggjandi_nyrri_scaled_tbl <- vnv_undirliggjandi_nyrri_tbl |>
+  left_join(
+    scaling_factors_tbl |> select(visitala, scaling_factor),
+    by = "visitala"
+  ) |>
+  mutate(
+    gildi = if_else(is.na(scaling_factor), gildi, gildi * scaling_factor)
+  ) |>
+  select(-scaling_factor)
+
+# Combine: old series up to (but not including) the new series start date,
+# then the scaled new series
+vnv_undirliggjandi_tbl <- bind_rows(
+  vnv_undirliggjandi_eldri_tbl |> filter(date < first_date_new),
+  vnv_undirliggjandi_nyrri_scaled_tbl
+) |>
+  arrange(visitala, date)
+
+data_ls$undirliggjandi_verdbolga <- vnv_undirliggjandi_tbl
+
+
+# 2.4.0 Verðbólguvæntingar -----
+get_infl_exp <- function(exp_path, rows, sheet_name, date_from) {
+  read_excel(exp_path, sheet = sheet_name) |>
+    slice(rows) |>
+    pivot_longer(cols = everything()) |>
+    select(2) |>
+    slice(-1) |>
+    mutate(
+      date = seq.Date(
+        from = as.Date(date_from),
+        length.out = nrow(cur_data()),
+        by = "quarter"
+      ),
+      value = as.numeric(value) / 100
+    ) |>
+    drop_na()
+}
+
+exp_path_1 <- "data/expectations/Verdbolguvaentingar-a-mismunandi-maelikvarda.xlsx"
+exp_path_2 <- "data/expectations/Vaentingar_markadsadila.xlsx"
+
+# 2.4.1 heimili ----
+infl_exp_heimili_tbl <- get_infl_exp(
+  exp_path = exp_path_1,
+  rows = 9,
+  sheet_name = "Heimili_Households",
+  date_from = "2003-01-01"
+) |>
+  mutate(key = "Heimili")
+
+# 2.4.2 fyrirtæki ----
+infl_exp_fyrirtaeki_tbl <- get_infl_exp(
+  exp_path = exp_path_1,
+  rows = 9,
+  sheet_name = "Fyrirtæki_Businesses",
+  date_from = "2003-01-01"
+) |>
+  mutate(key = "Fyrirtæki")
+
+# 2.4.3 markaðsaðilar ----
+infl_exp_markadsadilar_tbl <- read_excel(
+  exp_path_2,
+  sheet = "III-a"
+) |>
+  slice(9) |>
+  select(-1) |>
+  pivot_longer(cols = everything()) |>
+  select(-name) |>
+  mutate(
+    date = seq.Date(
+      from = as.Date("2012-01-01"),
+      length.out = nrow(cur_data()),
+      by = "quarter"
+    ),
+    value = as.numeric(value) / 100
+  ) |>
+  mutate(key = "Markaðsaðilar")
+
+
+# 2.4.4 sameina ----
+infl_exp_tbl <- bind_rows(
+  infl_exp_heimili_tbl,
+  infl_exp_fyrirtaeki_tbl,
+  infl_exp_markadsadilar_tbl
+)
+
+data_ls$verdbolgu_vaentingar <- infl_exp_tbl
+
+# 2.4.5 skuldabréfamarkaður ----
+infl_exp_breakeven_tbl <- read_excel(
+  exp_path_1,
+  sheet = "Verðbólguálag_Breakeven rates"
+) |>
+  slice(4:7) |>
+  pivot_longer(cols = -1) |>
+  select(-name) |>
+  set_names("bref", "value") |>
+  mutate(value = as.numeric(value) / 100) |>
+  pivot_wider(names_from = bref, values_from = value) |>
+  unnest(everything()) |>
+  set_names(
+    "Verðbólguálag til 1 árs",
+    "Verðbólguálag til 2 ára",
+    "Verðbólguálag til 5 ára",
+    "Verðbólguálag til 10 ára"
+  ) |>
+  mutate(
+    date = seq.Date(
+      from = as.Date("2003-01-01"),
+      length.out = nrow(cur_data()),
+      by = "quarter"
+    ),
+  ) |>
+  pivot_longer(cols = -date) |>
+  rename("key" = "name")
+
+data_ls$verdbolga_vaentingar_skuldabref <- infl_exp_breakeven_tbl
+
+
+# 2.5.0 Erlend staða þjóðarbúsins ----
+erlend_stada_tbl <-
+  read_excel(
+    "data/ErlendStadaThjodarbusinsISL.xlsx",
+    sheet = "Lóðrétt",
+    skip = 5
+  ) |>
+  select(1:2, "Hrein staða þjóðarbúsins án ILST í slita.") |>
+  set_names("date", "erlend_stada", "stada_an_slita") |>
+  mutate(
+    erlend_stada = if_else(stada_an_slita != 0, stada_an_slita, erlend_stada)
+  ) |>
+  mutate(date = date(as.yearqtr(date))) |>
+  select(date, erlend_stada)
+
+erlend_stada_tbl <- erlend_stada_tbl |>
+  left_join(gdp_nominal_qrt_tbl) |>
+  mutate(erlend_stada_hlutfall = erlend_stada / gdp_q_sum)
+
+data_ls$erlend_stada <- erlend_stada_tbl
+
+# 2.6.0 Skuldir ríkisins ----
+# https://sedlabanki.is/frettir-og-utgefid-efni/grein/hagvisar-sedlabanka-islands-22-desember-2025
+
+public_debt_tbl <-
+  read_excel(
+    "data/HV_Tolur_i_myndir_V_Opinber_fjarmal.xlsx",
+    sheet = "V-12",
+    skip = 11
+  ) |>
+  rename("date" = "...1") |>
+  pivot_longer(cols = -date) |>
+  drop_na()
+
+public_debt_tbl <- public_debt_tbl |>
+  mutate(
+    date = parse_number(date),
+    date = if_else(date >= 80, paste0(19, date), paste0(20, date))
+  )
+
+data_ls$public_debt <- public_debt_tbl
+
+# * -----
 # 3.0.0 VINNUMARKAÐURINN ----
+
+# 3.0.1 vmst ----
 # Næ í nýjustu upplýsingar af heimasíðu Vinnumálastofnunnar
 
 vmst_page <- read_html(
@@ -266,7 +526,7 @@ data_ls$starfandi <- starfandi_tbl
 
 # 3.2.0 Atvinnuleysi ----
 # Nota ekki atvinnuleysi eins og Vinnumálastofnun reiknar.
-# Nota sem hlutfall af vinnuafli sem gefur mjög ranga mynd.
+# Nota sem hlutfall af vinnuafli sem gefur ranga mynd.
 # Laga til minnkað starfshlutfall, fæ þetta sem hlutfall og
 # nota svo á mína útreikninga
 
@@ -405,7 +665,10 @@ atvinnuleysi_langtima_tbl <- atvinnuleysi_lengd_tbl |>
 
 data_ls$atvinnuleysi_langtima <- atvinnuleysi_langtima_tbl
 
-# 3.2.4 Laus störf ----
+# 3.2.4 atvinnuleysi ungs fólks ----
+# sjá til
+
+# 3.2.5 Laus störf ----
 laus_storf_tbl <-
   read_csv2(
     "https://px.hagstofa.is:443/pxis/sq/c57c066c-dea4-4e3f-b816-cb6b95678a9d"
@@ -419,7 +682,7 @@ laus_storf_tbl <-
 
 data_ls$laus_storf <- laus_storf_tbl
 
-# 3.2.5 Vinnulitlir ----
+# 3.2.6 Vinnulitlir ----
 vinnulitlir_tbl <-
   read_csv2(
     "https://px.hagstofa.is:443/pxis/sq/570ecedc-2d61-48f0-8723-0c448065b94d"
@@ -439,12 +702,27 @@ vinnulitlir_tbl <- vinnulitlir_tbl |>
 
 data_ls$vinnulitlir <- vinnulitlir_tbl
 
-# 3.2.5 Framleiðni ----
+# 3.2.7 Framleiðni ----
 framleidni_tbl <- qmm_tbl |>
   select(date, prod) |>
   drop_na()
 
 data_ls$framleidni <- framleidni_tbl
+
+# 3.2.8 hlutfall erlendra af fjölda starfandi ----
+hlutfall_erlendir_tbl <-
+  read_csv2(
+    "https://px.hagstofa.is:443/pxis/sq/4c22bb0f-e459-418d-87e5-bea637a72303"
+  ) |>
+  set_names("date", "alls", "erlendir") |>
+  mutate(
+    date = make_date(str_sub(date, 1, 4), str_sub(date, 6, 7)),
+    hlutfall = erlendir / alls
+  )
+
+data_ls$starfandi_erlendir <- hlutfall_erlendir_tbl
+
+# * -----
 
 # 4.0.0 LAUN ----
 
@@ -531,6 +809,8 @@ radstofunartekjur_tbl <- radstofunartekjur_tbl |>
   mutate(value = value / value[1] * 100)
 
 data_ls$radstofunartekjur <- radstofunartekjur_tbl
+
+# * -----
 
 # 5.0.0 HÚSNÆÐISMARKAÐURINN ----
 
@@ -622,6 +902,8 @@ myigloo_tbl <- myigloo_data |>
 b$close()
 
 data_ls$myigloo <- myigloo_tbl
+
+# * -----
 
 # 6.0.0 FJÁRMÁLAMARKAÐURINN ----
 
@@ -846,6 +1128,8 @@ commodities_tbl <- commodity_series |>
 
 data_ls$commodities <- commodities_tbl
 
+# * ----
+
 # 7.0.0 FERÐAÞJÓNUSTAN OG KORTAVELTA----
 
 # 7.1.0 Ferðamenn ----
@@ -911,6 +1195,9 @@ kortavelta_erlend_tbl <- kortavelta_tbl |>
   )
 
 data_ls$kortavelta_erlend <- kortavelta_erlend_tbl
+
+
+# * -----
 
 # 8.0.0 MANNFJÖLDI ----
 
