@@ -153,6 +153,7 @@ qmm_tbl <- qmm_tbl |>
 data_ls$qmm <- qmm_tbl
 
 # 1.1.4 Vísitala neysluverðs ----
+# mánaðarleg
 vnv_tbl <-
   read_csv2(
     "https://px.hagstofa.is:443/pxis/sq/50d1a327-4780-42cf-9f89-57d7b9e4ff8b"
@@ -163,8 +164,18 @@ vnv_tbl <-
   set_names("vnv", "date") |>
   mutate(vnv = vnv / 10)
 
+# ársfjórðungsleg
 vnv_qrt_tbl <- qmm_tbl |>
   select(date, cpi)
+
+# árleg
+vnv_year_tbl <-
+  read_csv2(
+    "https://px.hagstofa.is:443/pxis/sq/79a1bf94-bb83-4baa-9686-a425ffe94810",
+    na = "."
+  ) |>
+  drop_na() |>
+  set_names("date", "vnv")
 
 # 1.1.5 VLF á nafnvirði ----
 gdp_nominal_qrt_tbl <-
@@ -722,6 +733,35 @@ hlutfall_erlendir_tbl <-
 
 data_ls$starfandi_erlendir <- hlutfall_erlendir_tbl
 
+# 3.2.8 vinnustundir ----
+# Unnar stundir - eldri tímaröð: Heildarvinnutími svaranda i aðal- og aukastarfi í viðmiðunarvikunni.
+# Unnar stundir: Heildarvinnutími svarenda í aðal- og aukastarfi í viðmiðunarvikunni að frádregnum matarhléum og fjarveru vegna persónulegra erinda.
+# Venjulegar vinnustundir er meðalfjöldi vinnustunda sem svarendur segjast vinna venjulega í aðal- og aukastarfi.
+
+vinnustundir_tbl <-
+  read_csv2(
+    "https://px.hagstofa.is:443/pxis/sq/02112f40-41a9-47b6-b6b3-98b656fb510e",
+    na = ".."
+  ) |>
+  set_names("date", "Venjulegar vinnustundir", "Unnar stundir") |>
+  pivot_longer(cols = -date) |>
+  drop_na() |>
+  mutate(
+    value = value / 10,
+    date = make_date(str_sub(date, 1, 4), str_sub(date, 6, 7))
+  )
+
+data_ls$vinnustundir <- vinnustundir_tbl
+
+# 3.2.9 hlutfall launa af landsframleiðslu ----
+launahlutfall_tbl <-
+  read_csv2(
+    "https://px.hagstofa.is:443/pxis/sq/b4ef2b26-b051-40b4-85d0-6d1b0d8086c2"
+  ) |>
+  set_names("date", "vinnsluvirdi", "laun_og_tengd_gjold")
+
+data_ls$launahlutfall <- launahlutfall_tbl
+
 # * -----
 
 # 4.0.0 LAUN ----
@@ -791,6 +831,8 @@ laun_atvinnugrein_tbl <-
 data_ls$laun_atvinnugrein <- laun_atvinnugrein_tbl
 
 # 4.5.0 Ráðstöfunartekjur ----
+
+# 4.5.1 tekjuskiptingaruppgjör ----
 radstofunartekjur_tbl <-
   read_csv2(
     "https://px.hagstofa.is:443/pxis/sq/26e59868-9cb6-4272-be9e-338502460692",
@@ -809,6 +851,41 @@ radstofunartekjur_tbl <- radstofunartekjur_tbl |>
   mutate(value = value / value[1] * 100)
 
 data_ls$radstofunartekjur <- radstofunartekjur_tbl
+
+
+# 4.5.2 skattagögn ----
+# Tekjurs alls - skattar alls - vaxtagjold
+radstofunartekjur_skattagogn_tbl <-
+  read_csv2(
+    "https://px.hagstofa.is:443/pxis/sq/8979e631-7305-4f01-b6f7-bcabc80a5bdb"
+  ) |>
+  set_names("date", "tiundahluti", "radstofunartekjur", "fjoldi_i_hopi") |>
+  left_join(vnv_year_tbl)
+
+radstofunartekjur_skattagogn_tbl <- radstofunartekjur_skattagogn_tbl |>
+  mutate(
+    radstofunartekjur = (radstofunartekjur / fjoldi_i_hopi) / vnv
+  ) |>
+  group_by(tiundahluti) |>
+  mutate(radstofunartekjur = radstofunartekjur / radstofunartekjur[1] * 100) |>
+  ungroup()
+
+data_ls$radstofunartekjur_skattagogn <- radstofunartekjur_skattagogn_tbl
+
+
+# 4.6.0 Dreifing ----
+# https://px.hagstofa.is/pxis/pxweb/is/Samfelag/Samfelag__launogtekjur__1_laun__1_laun/VIN02005.px
+launadreifing_tbl <-
+  read_csv2(
+    "https://px.hagstofa.is:443/pxis/sq/4154b882-b87c-4f38-b086-52e5dd5a034d"
+  ) |>
+  select(-c(2:5)) |>
+  mutate(
+    Tíundastuðull = Tíundastuðull / 10,
+    Fjórðungastuðull = Fjórðungastuðull / 10
+  )
+
+data_ls$launadreifing <- launadreifing_tbl
 
 # * -----
 
@@ -1248,6 +1325,55 @@ flutningar_tbl <- read_csv2(
 
 data_ls$adfluttir_brottfluttir <- flutningar_tbl
 
+# * ----
+
+# 9.0.0 STAÐA FYRIRTÆKJA ----
+
+# 9.1.0 Rekstrarafgangur fyrirtækja ----
+tekjuskiptingaruppgjor_fyrirtaeki_tbl <-
+  read_csv2(
+    "https://px.hagstofa.is:443/pxis/sq/9c667800-7615-47ef-90ee-b354563a38a7"
+  ) |>
+  clean_names()
+
+tekjuskiptingaruppgjor_fyrirtaeki_tbl <- tekjuskiptingaruppgjor_fyrirtaeki_tbl |>
+  transmute(
+    # Hversu stór hluti verðmætasköpunar rennur til fyrirtækja áður en afskriftir, vextir og skattar eru greiddir.
+    "Hagnaðarhlutfall (% af VLF)" = b_2g_vergur_rekstrarafgangur /
+      b_1g_verg_landsframleidsla_1,
+
+    # Hversu stór hluti framleiðsluvirðis stendur eftir sem rekstrarafgangur.
+    "Rekstrarframlegdð fyrirtækja" = b_2g_vergur_rekstrarafgangur /
+      p_1_framleidsla,
+
+    # Hagnaður eftir afskriftir sem hlutfall af VLF.
+    "Hreint hagnaðarhlutfall fyrirtækja" = b_2n_hreinn_rekstrarafgangur /
+      b_1g_verg_landsframleidsla_1,
+
+    # Vaxtagjöld sem hlutfall af rekstrarafgangi
+    "Vaxtabyrði fyrirtækja" = d_41_vaxtagjold / b_2g_vergur_rekstrarafgangur,
+
+    # Arðgreiðslur sem hlutfall af rekstrarafgangi
+    "Arðgreiðsluhlutfall" = d_42_ardgreidslur_af_hlutabrefum /
+      b_2g_vergur_rekstrarafgangur,
+
+    # Hrein lánstaða fyrirtækja (% af VLF)
+    "Hrein lánstaða fyrirtækja (% af VLF)" = b_9_hrein_lanveiting_hrein_lan /
+      b_1g_verg_landsframleidsla_1,
+
+    # Fjármunamyndun sem hlutfall af rekstrarafgangi
+    "Fjárfestingarhlutfall fyrirtækja" = p_51_verg_fjarmunamyndun /
+      b_2g_vergur_rekstrarafgangur,
+
+    # Sparnaðarhlutfall fyrirtækja
+    "Sparnaðarhlutfall fyrirtækja" = b_8g_vergur_sparnadur /
+      b_2g_vergur_rekstrarafgangur
+  ) |>
+  mutate(date = 2000:(year(today()) - 2))
+
+# 9.2.0 Capacity utilization ----
+
+# * ----
 
 # SAVE DATA ----
 data_ls |>
