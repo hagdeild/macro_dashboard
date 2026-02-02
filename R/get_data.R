@@ -488,7 +488,7 @@ data_ls$erlend_stada <- erlend_stada_tbl
 
 public_debt_tbl <-
   read_excel(
-    "data/HV_Tolur_i_myndir_V_Opinber_fjarmal.xlsx",
+    "data/hagvisar/HV_Tolur_i_myndir_V_Opinber_fjarmal.xlsx",
     sheet = "V-12",
     skip = 11
   ) |>
@@ -1372,6 +1372,72 @@ tekjuskiptingaruppgjor_fyrirtaeki_tbl <- tekjuskiptingaruppgjor_fyrirtaeki_tbl |
   mutate(date = 2000:(year(today()) - 2))
 
 # 9.2.0 Capacity utilization ----
+
+# 9.3.0 Gjaldþrot fyrirtækja ----
+# Gjaldþrot fyrirtækja með virkni á fyrra ári
+# https://px.hagstofa.is/pxis/pxweb/is/Atvinnuvegir/Atvinnuvegir__fyrirtaeki__skradfyrirtaeki__2_skraningar/FYR03010.px
+
+gjaldthrot_tbl <-
+  read_csv2(
+    "https://px.hagstofa.is:443/pxis/sq/fedd52d5-6d57-45c6-9685-e79d12cbb8f7"
+  ) |>
+  select(-2) |>
+  set_names("date", "fjoldi") |>
+  mutate(date = make_date(str_sub(date, 1, 4), str_sub(date, 6, 7)))
+
+data_ls$gjaldthrot <- gjaldthrot_tbl
+
+# 9.4.0 Nýskráningar fyrirtækja ----
+nyskraning_tbl <-
+  read_csv2(
+    "https://px.hagstofa.is:443/pxis/sq/93538356-ae35-4358-af9f-de95b1baa58e"
+  ) |>
+  select(-c(2:3)) |>
+  set_names("date", "fjoldi") |>
+  mutate(date = make_date(str_sub(date, 1, 4), str_sub(date, 6, 7))) |>
+  arrange(date)
+
+data_ls$nyskraningar <- nyskraning_tbl
+
+# 9.5.0 Fjárfesting ----
+
+# 9.6.0 Væntingar fyrirtækja (Gallup) ----
+vaentigar_fyrirtaekja_tbl <-
+  read_excel(
+    "data/hagvisar/HV_Tolur_i_myndir_II_Framleidsla_og_eftirspurn.xlsx",
+    sheet = "II-17",
+    skip = 11
+  ) |>
+  select(-1) |>
+  rename("date" = "...2") |>
+  mutate(date = date(date))
+
+data_ls$vaentingar_fyrirtaekja <- vaentigar_fyrirtaekja_tbl
+
+# 9.7.0 Útflutningsgreinarnar ----
+
+# 9.7.1 Verðbmæti útfluttra sjávarafurða ----
+
+# 9.7.2 Fjöldi erlendra ferðamanna/gistinátta ----
+
+# 9.7.3 Aluminum/energy-intensive output ----
+# Hugsa þetta aðeins
+
+# 9.8.0 Byggingariðnaðurinn ----
+# Byggingakranar, innflutningur á sementi o.fl.
+
+# 9.8.1 Sementssala ----
+sement_tbl <-
+  read_excel(
+    "data/hagvisar/HV_Tolur_i_myndir_II_Framleidsla_og_eftirspurn.xlsx",
+    sheet = "II-20",
+    skip = 11
+  ) |>
+  rename("date" = "...1") |>
+  mutate(date = date(date))
+
+data_ls$sement <- sement_tbl
+
 
 # * ----
 
