@@ -758,6 +758,7 @@ launahlutfall_tbl <-
   read_csv2(
     "https://px.hagstofa.is:443/pxis/sq/b4ef2b26-b051-40b4-85d0-6d1b0d8086c2"
   ) |>
+  select(-Atvinnugrein) |>
   set_names("date", "vinnsluvirdi", "laun_og_tengd_gjold")
 
 data_ls$launahlutfall <- launahlutfall_tbl
@@ -1002,21 +1003,20 @@ data_ls$myigloo <- myigloo_tbl
 #   ) |>
 #   arrange(date)
 
-omxi15_hist_tbl <- read_csv("data/raw/omxi15.csv")
-
+# omxi15_hist_tbl <- read_csv("data/raw/omxi15.csv")
 
 omx15_tbl <- read_csv(
   "https://fred.stlouisfed.org/graph/fredgraph.csv?id=NASDAQOMXI15"
 ) |>
   set_names("date", "price") |>
-  fill(price, .direction = "down") |>
-  filter(date > max(omxi15_hist_tbl$date))
+  fill(price, .direction = "down")
+#filter(date > max(omxi15_hist_tbl$date))
 
-omx15_tbl <- omx15_tbl |>
-  bind_rows(omxi15_hist_tbl)
+# omx15_tbl <- omx15_tbl |>
+#   bind_rows(omxi15_hist_tbl)
 
-omx15_tbl |>
-  write_csv("data/raw/omxi15.csv")
+# omx15_tbl |>
+#   write_csv("data/raw/omxi15.csv")
 
 # 6.1.2 S&P 500
 sp500 <- tq_get("^GSPC", from = "2020-01-01") |>
@@ -1085,6 +1085,8 @@ data_ls$styrivextir <- styrivextir_upd_tbl
 styrivextir_upd_tbl |>
   write_csv("data/styrivextir.csv")
 
+
+# 6.3.1 Samanburður við önnur lönd
 
 # 6.4.0 Krafa ríkisskuldabréfa ----
 

@@ -77,33 +77,40 @@ get_iceland_rate <- function() {
 scrape_lanamal <- function() {
   url <- "https://lanamal.is/"
 
-  # Read the page
-  page <- read_html(url)
+  # Fetch page with proper encoding handling
+  response <- GET(url, timeout(30))
+
+  if (status_code(response) != 200) {
+    stop("Failed to fetch page. Status: ", status_code(response))
+  }
+
+  # Parse HTML with explicit UTF-8 encoding
+  page <- content(response, as = "text", encoding = "UTF-8") |>
+    read_html()
 
   # Find the non-indexed bonds section
-  bond_names <- page %>%
-    html_nodes("table") %>%
-    .[[1]] %>%
-    html_nodes("tr td:nth-child(1)") %>%
-    html_text() %>%
+  bond_names <- url |>
+    read_html() |>
+    html_nodes("td.fixed-width") |>
+    html_text() |>
     str_trim()
 
-  kaup <- page %>%
-    html_nodes("table") %>%
-    .[[1]] %>%
-    html_nodes("tr td:nth-child(3)") %>%
-    html_text() %>%
-    str_trim() %>%
-    str_replace(",", ".") %>%
+  kaup <- url |>
+    read_html() |>
+    html_nodes(".text-center+ .text-center") |>
+    html_text() |>
+    str_trim() |>
+    str_replace(",", ".") |>
+    as.numeric() |>
+    na.omit() |>
     as.numeric()
 
-  krafa <- page %>%
-    html_nodes("table") %>%
-    .[[1]] %>%
-    html_nodes("tr td:nth-child(4)") %>%
-    html_text() %>%
-    str_trim() %>%
-    str_replace(",", ".") %>%
+  krafa <- url |>
+    read_html() |>
+    html_nodes("td.text-right") |>
+    html_text() |>
+    str_trim() |>
+    str_replace(",", ".") |>
     as.numeric()
 
   # Create tibble
