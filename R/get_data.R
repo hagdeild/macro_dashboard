@@ -201,6 +201,9 @@ gdp_nominal_yearly_tbl <-
 # * ----
 
 # 2.0.0 MACRO/FISCAL ----
+
+macro_ls <- list()
+
 # Keðjutengt verðmæti, árstíðarleiðrétt
 
 gdp_comp_tbl <- read_csv2(
@@ -226,7 +229,7 @@ gdp_comp_tbl <- gdp_comp_tbl |>
     )
   )
 
-data_ls$gdp_comp <- gdp_comp_tbl
+macro_ls$gdp_comp <- gdp_comp_tbl
 
 # Landsframleiðsla
 gdp_tbl <- gdp_comp_tbl |>
@@ -234,7 +237,7 @@ gdp_tbl <- gdp_comp_tbl |>
   select(date, value) |>
   rename("gdp" = "value")
 
-data_ls$gdp <- gdp_tbl
+macro_ls$gdp <- gdp_tbl
 
 # 2.1.0 Á mann ----
 # Aðeins landsframleiðsla og einkaneysla
@@ -250,7 +253,7 @@ gdp_per_cap_tbl <- gdp_comp_tbl |>
   mutate(index = value_per_cap / value_per_cap[1] * 100) |>
   ungroup()
 
-data_ls$gdp_per_cap <- gdp_per_cap_tbl
+macro_ls$gdp_per_cap <- gdp_per_cap_tbl
 
 # 2.2.0 Viðskiptajöfnuður ----
 vidskiptajofnudur_tbl <-
@@ -269,7 +272,7 @@ vidskiptajofnudur_tbl <- vidskiptajofnudur_tbl |>
   drop_na() |>
   mutate(hlutfall = vidskiptajofnudur / gdp)
 
-data_ls$vidskiptajofnudur <- vidskiptajofnudur_tbl
+macro_ls$vidskiptajofnudur <- vidskiptajofnudur_tbl
 
 
 # 2.3.0 Undirliggjandi verðbólga ----
@@ -360,7 +363,7 @@ vnv_undirliggjandi_tbl <- bind_rows(
 ) |>
   arrange(visitala, date)
 
-data_ls$undirliggjandi_verdbolga <- vnv_undirliggjandi_tbl
+macro_ls$undirliggjandi_verdbolga <- vnv_undirliggjandi_tbl
 
 
 # 2.4.0 Verðbólguvæntingar -----
@@ -429,7 +432,7 @@ infl_exp_tbl <- bind_rows(
   infl_exp_markadsadilar_tbl
 )
 
-data_ls$verdbolgu_vaentingar <- infl_exp_tbl
+macro_ls$verdbolgu_vaentingar <- infl_exp_tbl
 
 # 2.4.5 skuldabréfamarkaður ----
 infl_exp_breakeven_tbl <- read_excel(
@@ -459,7 +462,7 @@ infl_exp_breakeven_tbl <- read_excel(
   pivot_longer(cols = -date) |>
   rename("key" = "name")
 
-data_ls$verdbolga_vaentingar_skuldabref <- infl_exp_breakeven_tbl
+macro_ls$verdbolga_vaentingar_skuldabref <- infl_exp_breakeven_tbl
 
 
 # 2.5.0 Erlend staða þjóðarbúsins ----
@@ -481,7 +484,7 @@ erlend_stada_tbl <- erlend_stada_tbl |>
   left_join(gdp_nominal_qrt_tbl) |>
   mutate(erlend_stada_hlutfall = erlend_stada / gdp_q_sum)
 
-data_ls$erlend_stada <- erlend_stada_tbl
+macro_ls$erlend_stada <- erlend_stada_tbl
 
 # 2.6.0 Skuldir ríkisins ----
 # https://sedlabanki.is/frettir-og-utgefid-efni/grein/hagvisar-sedlabanka-islands-22-desember-2025
@@ -502,10 +505,15 @@ public_debt_tbl <- public_debt_tbl |>
     date = if_else(date >= 80, paste0(19, date), paste0(20, date))
   )
 
-data_ls$public_debt <- public_debt_tbl
+macro_ls$public_debt <- public_debt_tbl
 
+
+# 2.7.0 MACRO SAMEINAÐ ----
+data_ls$macro <- macro_ls
 # * -----
 # 3.0.0 VINNUMARKAÐURINN ----
+
+vinnumarkadurinn_ls <- list()
 
 # 3.0.1 vmst ----
 # Næ í nýjustu upplýsingar af heimasíðu Vinnumálastofnunnar
@@ -533,7 +541,7 @@ starfandi_tbl <- read_csv2(
   mutate(hlutfall_starfandi = starfandi / mannfjoldi) |>
   drop_na()
 
-data_ls$starfandi <- starfandi_tbl
+vinnumarkadurinn_ls$starfandi <- starfandi_tbl
 
 # 3.2.0 Atvinnuleysi ----
 # Nota ekki atvinnuleysi eins og Vinnumálastofnun reiknar.
@@ -639,7 +647,7 @@ atvinnuleysi_tbl <- atvinnuleysi_tbl |>
   mutate(atvinnuleysi = atvinnuleysi * minnkad_ratio) |>
   select(date, atvinnuleysi)
 
-data_ls$atvinnuleysi <- atvinnuleysi_tbl
+vinnumarkadurinn_ls$atvinnuleysi <- atvinnuleysi_tbl
 
 
 # 3.2.3 Atvinnuleysi eftir lengd ----
@@ -674,7 +682,7 @@ atvinnuleysi_langtima_tbl <- atvinnuleysi_lengd_tbl |>
   mutate(atvinnuleysi = atvinnuleysi * minnkad_ratio) |>
   select(date, atvinnuleysi)
 
-data_ls$atvinnuleysi_langtima <- atvinnuleysi_langtima_tbl
+vinnumarkadurinn_ls$atvinnuleysi_langtima <- atvinnuleysi_langtima_tbl
 
 # 3.2.4 atvinnuleysi ungs fólks ----
 # sjá til
@@ -691,7 +699,7 @@ laus_storf_tbl <-
     date = date(as.yearqtr(date))
   )
 
-data_ls$laus_storf <- laus_storf_tbl
+vinnumarkadurinn_ls$laus_storf <- laus_storf_tbl
 
 # 3.2.6 Vinnulitlir ----
 vinnulitlir_tbl <-
@@ -711,14 +719,14 @@ vinnulitlir_tbl <- vinnulitlir_tbl |>
     date = date(as.yearqtr(str_replace(date, "Á", "Q")))
   )
 
-data_ls$vinnulitlir <- vinnulitlir_tbl
+vinnumarkadurinn_ls$vinnulitlir <- vinnulitlir_tbl
 
 # 3.2.7 Framleiðni ----
 framleidni_tbl <- qmm_tbl |>
   select(date, prod) |>
   drop_na()
 
-data_ls$framleidni <- framleidni_tbl
+vinnumarkadurinn_ls$framleidni <- framleidni_tbl
 
 # 3.2.8 hlutfall erlendra af fjölda starfandi ----
 hlutfall_erlendir_tbl <-
@@ -731,7 +739,7 @@ hlutfall_erlendir_tbl <-
     hlutfall = erlendir / alls
   )
 
-data_ls$starfandi_erlendir <- hlutfall_erlendir_tbl
+vinnumarkadurinn_ls$starfandi_erlendir <- hlutfall_erlendir_tbl
 
 # 3.2.8 vinnustundir ----
 # Unnar stundir - eldri tímaröð: Heildarvinnutími svaranda i aðal- og aukastarfi í viðmiðunarvikunni.
@@ -751,7 +759,7 @@ vinnustundir_tbl <-
     date = make_date(str_sub(date, 1, 4), str_sub(date, 6, 7))
   )
 
-data_ls$vinnustundir <- vinnustundir_tbl
+vinnumarkadurinn_ls$vinnustundir <- vinnustundir_tbl
 
 # 3.2.9 hlutfall launa af landsframleiðslu ----
 launahlutfall_tbl <-
@@ -761,11 +769,17 @@ launahlutfall_tbl <-
   select(-Atvinnugrein) |>
   set_names("date", "vinnsluvirdi", "laun_og_tengd_gjold")
 
-data_ls$launahlutfall <- launahlutfall_tbl
+vinnumarkadurinn_ls$launahlutfall <- launahlutfall_tbl
+
+# 3.3.0 VINNUMARKAÐURINN SAMEINAÐ ----
+
+data_ls$vinnumarkadurinn <- vinnumarkadurinn_ls
 
 # * -----
 
 # 4.0.0 LAUN ----
+
+laun_ls <- list()
 
 # 4.1.0 Launavísitala Hagstofu ----
 laun_hagstofa_tbl <-
@@ -775,7 +789,7 @@ laun_hagstofa_tbl <-
   set_names("date", "launavisitala") |>
   mutate(date = make_date(str_sub(date, 1, 4), str_sub(date, 6, 7)))
 
-data_ls$launavisitala <- laun_hagstofa_tbl
+laun_ls$launavisitala <- laun_hagstofa_tbl
 
 # 4.2.0 Laun starfsstétt ----
 laun_starfstett_tbl <-
@@ -791,7 +805,7 @@ laun_starfstett_tbl <-
   mutate(visitala = visitala / visitala[1] * 100) |>
   ungroup()
 
-data_ls$laun_starfsstett <- laun_starfstett_tbl
+laun_ls$laun_starfsstett <- laun_starfstett_tbl
 
 # 4.3.0 Launþegahópar ----
 laun_hopar_tbl <-
@@ -807,7 +821,7 @@ laun_hopar_tbl <-
   mutate(visitala = visitala / visitala[1] * 100) |>
   ungroup()
 
-data_ls$laun_hopur <- laun_hopar_tbl
+laun_ls$laun_hopur <- laun_hopar_tbl
 
 
 # 4.4.0 Atvinnugrein ----
@@ -829,7 +843,7 @@ laun_atvinnugrein_tbl <-
   ungroup() |>
   drop_na()
 
-data_ls$laun_atvinnugrein <- laun_atvinnugrein_tbl
+laun_ls$laun_atvinnugrein <- laun_atvinnugrein_tbl
 
 # 4.5.0 Ráðstöfunartekjur ----
 
@@ -851,7 +865,7 @@ radstofunartekjur_tbl <- radstofunartekjur_tbl |>
   select(-cpi) |>
   mutate(value = value / value[1] * 100)
 
-data_ls$radstofunartekjur <- radstofunartekjur_tbl
+laun_ls$radstofunartekjur <- radstofunartekjur_tbl
 
 
 # 4.5.2 skattagögn ----
@@ -871,7 +885,7 @@ radstofunartekjur_skattagogn_tbl <- radstofunartekjur_skattagogn_tbl |>
   mutate(radstofunartekjur = radstofunartekjur / radstofunartekjur[1] * 100) |>
   ungroup()
 
-data_ls$radstofunartekjur_skattagogn <- radstofunartekjur_skattagogn_tbl
+laun_ls$radstofunartekjur_skattagogn <- radstofunartekjur_skattagogn_tbl
 
 
 # 4.6.0 Dreifing ----
@@ -886,11 +900,17 @@ launadreifing_tbl <-
     Fjórðungastuðull = Fjórðungastuðull / 10
   )
 
-data_ls$launadreifing <- launadreifing_tbl
+laun_ls$launadreifing <- launadreifing_tbl
+
+# 4.7.0 LAUN SAMEINAÐ ----
+
+data_ls$laun <- laun_ls
 
 # * -----
 
 # 5.0.0 HÚSNÆÐISMARKAÐURINN ----
+
+husnaedi_ls <- list()
 
 # 5.1.0 Leiguverð ----
 # Gögn: https://hms.is/gogn-og-maelabord/visitolur
@@ -903,7 +923,7 @@ leiguverd_tbl <- read_csv(
   rename("leiguverd" = "visitala") |>
   select(date, leiguverd)
 
-data_ls$leiguverd <- leiguverd_tbl
+husnaedi_ls$leiguverd <- leiguverd_tbl
 
 
 # 5.2.0 Íbúðaverð ----
@@ -916,7 +936,7 @@ kaupverd_tbl <- read_csv(
   select(date, everything()) |>
   pivot_longer(-date)
 
-data_ls$kaupverd <- kaupverd_tbl
+husnaedi_ls$kaupverd <- kaupverd_tbl
 
 # 5.3.0 Kaupsrká fasteigna ----
 # kaupskra_tbl <- read_csv2("data/kaupskra.csv", locale = locale(encoding = "latin1")) |>
@@ -979,11 +999,16 @@ myigloo_tbl <- myigloo_data |>
 # Clean up
 b$close()
 
-data_ls$myigloo <- myigloo_tbl
+husnaedi_ls$myigloo <- myigloo_tbl
+
+# 5.4.0 HÚSNÆÐISMARKAÐURINN SAMEINAÐ ----
+data_ls$husnaedi <- husnaedi_ls
 
 # * -----
 
 # 6.0.0 FJÁRMÁLAMARKAÐURINN ----
+
+fjarmal_ls <- list()
 
 # 6.1.0 Hlutabréfaverð ----
 
