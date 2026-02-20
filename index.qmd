@@ -262,7 +262,7 @@ p9 <- data_ls$framleidni |>
   mutate(prod = prod / prod[1] * 100) |> 
   ggplot(aes(date, prod)) +
   geom_line() +
-  geom_smooth(se = FALSE, span = 0.4) + 
+  geom_smooth(se = FALSE, span = 0.6) + 
   theme_minimal() +
   labs(
     x = NULL,
