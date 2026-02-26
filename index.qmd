@@ -34,21 +34,8 @@ date_from_x <- "2020-01-01"
 ```
 
 ```{r, hjalparfoll}
-# VR plot layout
-# vr_layout <- function(plot, tooltip = c("x", "y", "colour", "text")) {
-#   plotly::ggplotly(plot, tooltip = tooltip) |>
-#     plotly::layout(
-#       legend = list(
-#         title = list(text = ""),
-#         orientation = "h",
-#         y = -0.2,
-#         x = 0.5,
-#         xanchor = "center"
-#       )
-#     )
-# }
 
-vr_layout <- function(plot, title_x = NULL, textposition = NULL, tooltip = "all", tooltip_percent = FALSE) {
+vr_layout <- function(plot, title_x = NULL, textposition = NULL, tooltip = "all", tooltip_percent = FALSE, font_size = 16) {
   p <- plotly::ggplotly(plot, tooltip = tooltip) |>
     plotly::layout(
       legend = list(
@@ -59,6 +46,21 @@ vr_layout <- function(plot, title_x = NULL, textposition = NULL, tooltip = "all"
         xanchor = "center"
       )
     )
+  if (!is.null(font_size)) {
+    font <- list(size = font_size)
+    p <- plotly::layout(p, font = font, legend = list(font = font))
+    # Update all axes (xaxis, xaxis2, xaxis3, ... created by facets)
+    ax_names <- grep("^[xy]axis", names(p$x$layout), value = TRUE)
+    for (ax in ax_names) {
+      p$x$layout[[ax]]$tickfont <- font
+      p$x$layout[[ax]]$titlefont <- font
+    }
+    if (!is.null(p$x$layout$annotations)) {
+      for (i in seq_along(p$x$layout$annotations)) {
+        p$x$layout$annotations[[i]]$font$size <- font_size
+      }
+    }
+  }
   # Format numbers in default tooltip
   if (identical(tooltip, "all")) {
     fmt_one <- function(t) {
@@ -734,4 +736,205 @@ p23 <- tourism_ls$kortavelta_erlend |>
   scale_y_continuous(label = number_format())
 
 vr_layout(p23)
+```
+
+
+# Mannfjöldi
+
+## Row
+
+```{r, mannfjoldi_data}
+mannfjoldi_ls <- data_ls$mannfjoldi
+```
+
+
+```{r, aldurspyramidi}
+p24 <- mannfjoldi_ls$aldurspyramidi |>
+  ggplot(aes(x = aldur, y = fjoldi_plot, fill = kyn)) +
+  geom_col() +
+  coord_flip() +
+  facet_grid(country ~ ar) +
+  scale_y_continuous(labels = \(x) scales::number(abs(x), big.mark = ".")) +
+  scale_fill_manual(values = c("Karlar" = vr_litir[1], "Konur" = vr_litir[4])) +
+  labs(
+    x = NULL,
+    y = "Fjöldi",
+    fill = NULL,
+    title = "Aldurspýramídi"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "top")
+
+vr_layout(p24)
+```
+
+
+```{r, adfluttir_umfram_brottflutta}
+p25 <- mannfjoldi_ls$adfluttir_brottfluttir |>
+  mutate(
+    value_plot = if_else(event == "Brottfluttir", -abs(value), abs(value))
+  ) |>
+  ggplot(aes(x = date)) +
+  geom_col(
+    data = \(df) filter(df, event != "Aðfluttir umfram brottflutta"),
+    aes(y = value_plot, fill = event)
+  ) +
+  geom_line(
+    data = \(df) filter(df, event == "Aðfluttir umfram brottflutta"),
+    aes(y = value, colour = event),
+    linewidth = 0.8
+  ) +
+  geom_hline(yintercept = 0, linewidth = 0.3) +
+  facet_wrap(~rikisfang) +
+  scale_fill_manual(values = c("Aðfluttir" = vr_litir[2], "Brottfluttir" = vr_litir[4])) +
+  scale_colour_manual(values = c("Aðfluttir umfram brottflutta" = vr_litir[1])) +
+  scale_y_continuous(labels = \(x) scales::number(abs(x), big.mark = ".")) +
+  labs(
+    x = NULL,
+    y = "Fjöldi",
+    fill = NULL,
+    colour = NULL,
+    title = "Aðfluttir og brottfluttir eftir ríkisfangi"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "top")
+
+vr_layout(p25) |>
+  (\(p) {
+    seen <- character()
+    for (i in seq_along(p$x$data)) {
+      nm <- p$x$data[[i]]$name
+      if (!is.null(nm)) {
+        clean <- gsub("^\\((.+),\\d+\\)$", "\\1", nm)
+        p$x$data[[i]]$name <- clean
+        p$x$data[[i]]$legendgroup <- clean
+        if (clean %in% seen) {
+          p$x$data[[i]]$showlegend <- FALSE
+        } else {
+          seen <- c(seen, clean)
+        }
+      }
+    }
+    p
+  })()
+```
+
+
+# Staða fyrirtækja
+
+```{r, ft_data}
+ft_ls <- data_ls$fyrirtaeki
+```
+
+## Row
+
+```{r, tekjuskiptingaruppgjör}
+p26 <- ft_ls$tekjuskiptingaruppgjor |> 
+  pivot_longer(cols = - date) |> 
+  ggplot(aes(date, value)) + 
+  geom_col(fill = adal_litur) +
+  facet_wrap(~ name, scales = "free_y") + 
+  theme_minimal() +
+  #theme(plot.title = element_text(margin = margin(b = 15))) +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Staða íslenskra fyrirtækja\nUpplýsingar úr tekjuskiptingaruppgjöri Hagstofu"
+  ) +
+  scale_y_continuous(labels = percent)
+
+vr_layout(p26, tooltip_percent = TRUE) |>
+  plotly::layout(margin = list(t = 120))
+```
+
+
+# Staða fyrirtækja, frh.
+
+## Row
+
+```{r, gjaldthrot}
+p27 <- ft_ls$gjaldthrot |> 
+  filter(date >= date_from_x) |> 
+  mutate(trend = rollapplyr(fjoldi, width = 12, FUN = mean, partial = TRUE)) |> 
+  ggplot(aes(date, fjoldi)) +
+  geom_line(col = adal_litur) + 
+  geom_line(aes(y = trend), col = trend_litur) +
+  theme_minimal() +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Gjaldþrot fyrirtækja með virkni á fyrra ári"
+  ) 
+
+vr_layout(p27)
+```
+
+
+```{r, nyskraningar}
+p28 <- ft_ls$nyskraningar |> 
+  filter(date >= date_from_x) |> 
+  mutate(trend = rollapplyr(fjoldi, width = 12, FUN = mean, partial = TRUE)) |> 
+  ggplot(aes(date, fjoldi)) +
+  geom_line(col = adal_litur) + 
+  geom_line(aes(y = trend), col = trend_litur) +
+  theme_minimal() +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Nýskráningar fyrirtækja"
+  )
+
+vr_layout(p28)
+```
+
+
+## Row
+
+```{r, vaentingar_fyrirtaekja}
+p29 <- ft_ls$vaentingar_fyrirtaekja |> 
+  select(date, contains("v.")) |> 
+  pivot_longer(cols = -date) |> 
+  mutate(
+    name = str_remove(name, "\\(v\\. ás\\)"),
+    name = str_trim(name)
+    ) |> 
+  ggplot(aes(date, value, col = name)) +
+  geom_line() +
+  scale_color_manual(values = vr_litir) +
+  theme_minimal() +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Vísitölur efnahagslífsins\nKönnun Gallup á viðhorfi 400 stærstu fyrirtækjum landsins"
+  )
+
+vr_layout(p29)
+```
+
+
+```{r, vaentingar_hlutfall}
+p30 <- ft_ls$vaentingar_fyrirtaekja |> 
+  select(date, contains("h.")) |> 
+  pivot_longer(cols = -date) |> 
+  mutate(
+    name = str_remove(name, "\\(h\\. ás\\)"),
+    name = str_trim(name)
+    ) |> 
+  mutate(
+    name = factor(name, levels = c(
+      "Mjög góðar", "Góðar", 
+      "Slæmar", "Mjög slæmar"
+    ))
+  ) |> 
+  ggplot(aes(date, value, fill = name)) +
+  geom_col(width = 120, col = "white") + 
+  scale_fill_manual(values = vr_litir) +
+  theme_minimal() +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Vísitölur efnahagslífsins\nKönnun Gallup á viðhorfi 400 stærstu fyrirtækjum landsins"
+  )
+
+vr_layout(p30)
 ```
