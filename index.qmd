@@ -12,6 +12,7 @@ format:
 library(tidyverse)
 library(scales)
 library(plotly)
+library(zoo)
 ```
 
 ```{r, data og annað}
@@ -20,6 +21,9 @@ data_ls <- read_rds("full_data.rds")
 # Litir
 vr_litir <- c("#00305c", "#028fbc", "#eec215", "#d64550", "#4fb94f", "#7d5ba6", "#e07b39", "#3a8e8e")
 valuebox_litir <- c("#2E7D6E", "#E57373", "#F9A825")
+
+adal_litur  <- vr_litir[1]
+trend_litur <- vr_litir[4]
 
 # Date
 date_back_year     <- floor_date(today(), "year") - months(12)
@@ -31,8 +35,21 @@ date_from_x <- "2020-01-01"
 
 ```{r, hjalparfoll}
 # VR plot layout
-vr_layout <- function(plot, tooltip = c("x", "y", "colour", "text")) {
-  plotly::ggplotly(plot, tooltip = tooltip) |>
+# vr_layout <- function(plot, tooltip = c("x", "y", "colour", "text")) {
+#   plotly::ggplotly(plot, tooltip = tooltip) |>
+#     plotly::layout(
+#       legend = list(
+#         title = list(text = ""),
+#         orientation = "h",
+#         y = -0.2,
+#         x = 0.5,
+#         xanchor = "center"
+#       )
+#     )
+# }
+
+vr_layout <- function(plot, title_x = NULL, textposition = NULL, tooltip = "all", tooltip_percent = FALSE) {
+  p <- plotly::ggplotly(plot, tooltip = tooltip) |>
     plotly::layout(
       legend = list(
         title = list(text = ""),
@@ -42,18 +59,83 @@ vr_layout <- function(plot, tooltip = c("x", "y", "colour", "text")) {
         xanchor = "center"
       )
     )
+  # Format numbers in default tooltip
+  if (identical(tooltip, "all")) {
+    fmt_one <- function(t) {
+      if (is.na(t) || !nzchar(t)) return(t)
+      # Match decimal numbers that are NOT dates (dates look like 2025-01-15)
+      # Target: numbers with a decimal point preceded by ": " or standalone
+      m <- gregexpr("-?[0-9]*\\.[0-9]{3,}", t, perl = TRUE)
+      regmatches(t, m) <- lapply(regmatches(t, m), function(nums) {
+        vals <- as.numeric(nums)
+        if (tooltip_percent) {
+          sprintf("%.2f%%", vals * 100)
+        } else {
+          sprintf("%.2f", vals)
+        }
+      })
+      t
+    }
+    for (i in seq_along(p$x$data)) {
+      tt <- p$x$data[[i]]$text
+      if (!is.null(tt)) {
+        p$x$data[[i]]$text <- vapply(tt, fmt_one, character(1), USE.NAMES = FALSE)
+      }
+    }
+  }
+  if (!is.null(textposition)) {
+    text_traces <- which(sapply(p$x$data, function(tr) {
+      !is.null(tr$mode) && grepl("text", tr$mode)
+    }))
+    if (length(text_traces) > 0) {
+      for (i in seq_along(text_traces)) {
+        pos <- textposition[min(i, length(textposition))]
+        p <- plotly::style(p, textposition = pos, traces = text_traces[i])
+      }
+    }
+  }
+  if (!is.null(title_x)) {
+    title_text <- if (is.null(plot$labels$title)) "" else plot$labels$title
+
+    # ggplotly often stores the ggplot title as an annotation anchored to "paper".
+    # Remove that annotation and set a real Plotly layout title anchored to container.
+    if (!is.null(p$x$layout$annotations) && nzchar(title_text)) {
+      p$x$layout$annotations <- Filter(function(ann) {
+        ann_text <- if (is.null(ann$text)) "" else as.character(ann$text)
+        is_title_text <- grepl(title_text, ann_text, fixed = TRUE)
+        is_top_noarrow <- isFALSE(ann$showarrow) && !is.null(ann$y) && isTRUE(ann$y > 1)
+        !(is_title_text || is_top_noarrow)
+      }, p$x$layout$annotations)
+    }
+
+    p <- plotly::layout(
+      p,
+      title = list(
+        text = title_text,
+        x = title_x,
+        xanchor = "left",
+        xref = "container"
+      )
+    )
+  }
+  p
 }
+
 ```
 
 
 # Þjóðhagsreikningar
+
+```{r, macro_data}
+macro_data_ls <- data_ls$macro
+```
 
 ## Row
 
 ```{r, gdp_components}
 gdp_comp_use <- c("Einkaneysla", "Samneysla", "Fjárfesting alls", "Innflutningur", "Útflutningur", "Verg Landsframleiðsla")
 
-p1 <- data_ls$gdp_comp |> 
+p1 <- macro_data_ls$gdp_comp |> 
   filter(skipting %in% gdp_comp_use) |> 
   arrange(date, skipting) |> 
   group_by(skipting) |> 
@@ -70,7 +152,7 @@ p1 <- data_ls$gdp_comp |>
   drop_na() |> 
   filter(year(date) >= date_from_max_back) |> 
   ggplot(aes(date, delta, text = tooltip_text)) + 
-  geom_col(fill = vr_litir[1]) + 
+  geom_col(fill = adal_litur) + 
   facet_wrap(~ skipting) +
   theme_minimal() +
   scale_y_continuous(labels = percent) +
@@ -93,7 +175,7 @@ vr_layout(p1, tooltip = "text")
 
 
 ```{r, gdp_per_cap}
-p2 <- data_ls$gdp_per_cap |> 
+p2 <- macro_data_ls$gdp_per_cap |> 
   # filter(year(date) >= date_from_max_back) |> 
   # group_by(skipting) |> 
   # mutate(index = index / index[1] * 100) |> 
@@ -119,13 +201,13 @@ vr_layout(p2)
 ## Row
 
 ```{r, hagvoxtur}
-p3 <- data_ls$gdp_per_cap |> 
+p3 <- macro_data_ls$gdp_per_cap |> 
   filter(str_detect(skipting, "Verg")) |> 
   mutate(
     "gdp_gr_per_cap" = index / lag(index, 4) - 1
   ) |> 
   ggplot(aes(date, gdp_gr_per_cap)) +
-  geom_col(fill = vr_litir[1]) +
+  geom_col(fill = adal_litur) +
   theme_minimal() +
   labs(
     x = NULL,
@@ -134,37 +216,43 @@ p3 <- data_ls$gdp_per_cap |>
   ) +
   scale_y_continuous(labels = percent)
 
-vr_layout(p3)
+vr_layout(p3, tooltip_percent = TRUE)
 ```
 
 
-
 ```{r, Viðskiptajöfnuður}
-p4 <- data_ls$vidskiptajofnudur |> 
+p4 <- macro_data_ls$vidskiptajofnudur |>
+  mutate(trend = rollapplyr(hlutfall, width = 4, FUN = mean, partial = TRUE)) |> 
   ggplot(aes(date, hlutfall)) +
-  geom_line() + 
-  geom_smooth(se = FALSE, span = 0.3, lwd = 0.8) +
+  geom_line(col = adal_litur) + 
+  geom_line(aes(y = trend), col = trend_litur) + 
   geom_hline(yintercept = 0, linetype = "dashed") +
   theme_minimal() +
   labs(
     x = NULL,
     y = NULL,
-    title = "Viðskiptajöfnuður (hlutfall af landsframleiðslu)"
-  )
+    title = "Viðskiptajöfnuður (hlutfall af landsframleiðslu)\nRauða línan sýnir meðaltal seinustu fjóra ársfjórðunga"
+  ) +
+  scale_y_continuous(label = percent)
 
-vr_layout(p4)
+vr_layout(p4, tooltip_percent = TRUE)
 ```
 
 
 # Vinnumarkaðurinn
 
+```{r, vinnumarkadur_data}
+vinnumarkadur_ls <- data_ls$vinnumarkadurinn
+```
+
 ## Row
 
 ```{r, hlutfall_starfandi}
-p5 <- data_ls$starfandi |> 
+p5 <- vinnumarkadur_ls$starfandi |> 
+  mutate(trend = rollapplyr(hlutfall_starfandi, width = 12, FUN = mean, partial = TRUE)) |> 
   ggplot(aes(date, hlutfall_starfandi)) + 
-  geom_line() +
-  geom_smooth(se = FALSE, span = 0.3) +
+  geom_line(col = adal_litur) +
+  geom_line(aes(y = trend), col = trend_litur) + 
   theme_minimal() +
   labs(
     x = NULL,
@@ -173,16 +261,15 @@ p5 <- data_ls$starfandi |>
   ) +
   scale_y_continuous(labels = percent)
 
-vr_layout(p5)
+vr_layout(p5, tooltip_percent = TRUE)
 ```
 
 
-
 ```{r, atvinnuleysi}
-p6 <- data_ls$atvinnuleysi |> 
+p6 <- vinnumarkadur_ls$atvinnuleysi |> 
   filter(date >= date_from_x) |> 
   rename("Atvinnuleysi" = "atvinnuleysi") |> 
-  left_join(data_ls$atvinnuleysi_langtima |> rename("Langtíma atvinnuleysi" = "atvinnuleysi")) |> 
+  left_join(vinnumarkadur_ls$atvinnuleysi_langtima |> rename("Langtíma atvinnuleysi" = "atvinnuleysi")) |> 
   drop_na() |> 
   pivot_longer(cols = -date) |> 
   ggplot(aes(date, value, col = name)) + 
@@ -200,16 +287,14 @@ p6 <- data_ls$atvinnuleysi |>
     title = "Atvinnuleysi og langtíma atvinnuleysi (12 mánuðir og lengur)"
   )
 
-vr_layout(p6)
+vr_layout(p6, tooltip_percent = TRUE)
 ```
-
 
 ## Row
 
-
 ```{r, auglyst_storf}
 # auglýst störf og vinnulitlir
-auglyst_storf_tbl <- data_ls$laus_storf |> 
+auglyst_storf_tbl <- vinnumarkadur_ls$laus_storf |> 
   filter(date >= date_from_x) |> 
   mutate(hlutfall = laus_storf / fjoldi_starfa) |> 
   select(-c(laus_storf, fjoldi_starfa))
@@ -225,14 +310,14 @@ p7 <- auglyst_storf_tbl |>
   ) +
   scale_y_continuous(labels = percent)
 
-vr_layout(p7)
+vr_layout(p7, tooltip_percent = TRUE)
 
 ```
 
 
 ```{r, vinnulitlir}
 # Hlutastörf
-hlutastorf_tbl <- data_ls$vinnulitlir
+hlutastorf_tbl <- vinnumarkadur_ls$vinnulitlir
 
 p8 <- hlutastorf_tbl |> 
   filter(date >= date_from_x) |> 
@@ -252,35 +337,41 @@ p8 <- hlutastorf_tbl |>
     legend.position = "bottom"
   )
 
-vr_layout(p8)
+vr_layout(p8, tooltip_percent = TRUE)
 ```
 
 
 ```{r, framleidni}
-p9 <- data_ls$framleidni |> 
+p9 <- vinnumarkadur_ls$framleidni |> 
+  mutate(
+    trend = rollapplyr(prod, width = 4, FUN = mean, partial = TRUE),
+    delta = trend / lag(trend, 4) - 1
+    ) |> 
   filter(date >= date_from_x) |> 
-  mutate(prod = prod / prod[1] * 100) |> 
-  ggplot(aes(date, prod)) +
-  geom_line() +
-  geom_smooth(se = FALSE, span = 0.6) + 
+  ggplot(aes(date, delta)) +
+  geom_col(fill = adal_litur) +
   theme_minimal() +
   labs(
     x = NULL,
     y = NULL,
-    title = "Framleiðni vinnuafls"
+    title = "Þróun á framleiðni vinnuafls\nBreyting m.v. sama ársfjórðungi árið á undan (4ra mánaða hlaupandi meðaltal)"
   )
 
-vr_layout(p9)
+vr_layout(p9, tooltip_percent = TRUE)
 
 ```
 
 
 # Laun
 
+```{r, laun_data}
+laun_ls <- data_ls$laun
+```
+
 ## Row
 
 ```{r, launavisitala_hagstofu}
-launavisitala_tbl <- data_ls$launavisitala |>
+launavisitala_tbl <- laun_ls$launavisitala |>
   filter(date >= date_from_x) |> 
   mutate(date = floor_date(date, "quarter")) |> 
   group_by(date) |> 
@@ -289,7 +380,7 @@ launavisitala_tbl <- data_ls$launavisitala |>
   drop_na() |> 
   select(-launavisitala)
 
-radstofunartekjur_tbl <- data_ls$radstofunartekjur |>
+radstofunartekjur_tbl <- laun_ls$radstofunartekjur |>
   mutate("Ráðstöfunartekjur" = value / lag(value, 4) - 1) |>
   drop_na() |> 
   select(-value)
@@ -310,13 +401,13 @@ p10 <- radstofunartekjur_tbl |>
     title = "Launavísitala Hagstofu og ráðstöfunartekjur, breyting frá sama tíma árið á undan"
   )
 
-vr_layout(p10)
+vr_layout(p10, tooltip_percent = TRUE)
 
 ```
 
 
 ```{r, laun_starfsstett}
-p11 <- data_ls$laun_starfsstett |> 
+p11 <- laun_ls$laun_starfsstett |> 
   filter(date >= date_from_x) |> 
   group_by(starfsstett) |> 
   mutate(visitala = visitala / visitala[1] * 100) |> 
@@ -342,7 +433,7 @@ vr_layout(p11)
 ## Row
 
 ```{r, launþegahopar}
-p12 <- data_ls$laun_hopur |> 
+p12 <- laun_ls$laun_hopur |> 
   filter(date >= date_from_x) |> 
   group_by(hopur) |> 
   mutate(visitala = visitala / visitala[1] * 100) |> 
@@ -368,7 +459,7 @@ vr_layout(p12)
 
 
 ```{r, starfsheiti}
-p13 <- data_ls$laun_atvinnugrein |> 
+p13 <- laun_ls$laun_atvinnugrein |> 
   filter(date >= date_from_x) |> 
   group_by(atvinnugrein) |> 
   mutate(
@@ -397,10 +488,14 @@ vr_layout(p13)
 
 # Húsnæðis- og leiguverð
 
+```{r, husnaedi_data}
+hus_ls <- data_ls$husnaedi
+```
+
 ## Row
 
 ```{r, husnaedisver}
-p14 <- data_ls$kaupverd |> 
+p14 <- hus_ls$kaupverd |> 
   mutate(
     name = 
       case_when(
@@ -436,7 +531,7 @@ vr_layout(p14)
 
 
 ```{r, leiguverð}
-p15 <- data_ls$leiguverd |> 
+p15 <- hus_ls$leiguverd |> 
   ggplot(aes(date, leiguverd)) + 
   geom_line() +
   theme_minimal() +
@@ -453,7 +548,8 @@ vr_layout(p15)
 ## Row
 
 ```{r, typical_price}
-p16 <- data_ls$myigloo |> separate_wider_delim(cols = stadur, delim = " ", names = c("pnr", "stadur"), too_many = "merge") |> 
+p16 <- hus_ls$myigloo |> separate_wider_delim(cols = stadur, delim = " ", names = c("pnr", "stadur"), too_many = "merge") |> 
+  filter(stadur %in% c("Reykjavík", "Hafnarfjörður", "Kópavogur", "Mosfellsbær", "Garðabær")) |> 
   ggplot(aes(x = reorder(stadur, verd, median), y = verd)) +
   geom_boxplot(outlier.shape = NA, fill = "steelblue", alpha = 0.3) +
   geom_jitter(width = 0.2, alpha = 0.6, color = "steelblue") +
@@ -473,10 +569,14 @@ vr_layout(p16)
 
 # Fjármálamarkaðurinn
 
+```{r, fjarmala_data}
+finance_ls <- data_ls$fjarmal
+```
+
 ## Row
 
 ```{r, hlutabrefaverd}
-p17 <- data_ls$stocks |> 
+p17 <- finance_ls$stocks |> 
   arrange(date, name) |> 
   group_by(name) |> 
   mutate(value = value / value[1] * 100) |> 
@@ -489,11 +589,149 @@ p17 <- data_ls$stocks |>
     y = NULL,
     title = "Hlutabréfamarkaðurinn: Ísland (OMXI15) vs. Bandaríkin (S&P 500)"
   ) +
-    scale_color_manual(values = vr_litir)
+  scale_color_manual(values = vr_litir)
 
 vr_layout(p17)
 
 ```
 
 
-#
+
+```{r, skuldabref_krafa}
+p18 <- finance_ls$krafa |>
+  filter(date >= date_from_x) |> 
+  set_names("date", "5 ára", "10 ára") |>
+  pivot_longer(cols = -date) |> 
+  ggplot(aes(date, value, col = name)) + 
+  geom_line() +
+  scale_color_manual(values = vr_litir) +
+  theme_minimal() +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Krafa á skuldabréfamarkaði til 5 og 10 ára"
+  )
+
+vr_layout(p18)
+```
+
+
+## Row
+
+```{r, gengi}
+p19 <- finance_ls$gengi |> 
+  filter(date >= date_from_x) |> 
+  ggplot(aes(date, gengi)) + 
+  geom_line(col = adal_litur) +
+  theme_minimal() +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Gengisvísitala krónunnar - Dagsgögn"
+  )
+
+vr_layout(p19)
+```
+
+
+
+```{r, commodities}
+p20 <- finance_ls$commodities |>
+  mutate(date = floor_date(date, "month")) |> 
+  group_by(date, name) |>
+  summarise(value = mean(value)) |>  
+  ungroup() |> 
+  filter(date >= date_from_x) |>
+  arrange(date, name) |>
+  group_by(name) |> 
+  mutate(value = value/value[1] * 100) |> 
+  ggplot(aes(date, value, col = name)) + 
+  geom_line() + 
+  theme_minimal() + 
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Hrávöruverð á heimsmarkaði"
+  ) + 
+  scale_color_manual(values = vr_litir)
+
+vr_layout(p20)
+```
+
+
+# Ferðaþjónustan
+
+```{r}
+tourism_ls <- data_ls$tourism
+```
+
+## Row
+
+
+```{r, ferdamenn}
+p21 <- tourism_ls$ferdamenn |> 
+  filter(date >= date_from_x) |> 
+  arrange(date, name) |> 
+  group_by(name) |> 
+  mutate(trend = rollapplyr(value, width = 12, FUN = mean, partial = TRUE)) |> 
+  ungroup() |> 
+  ggplot(aes(date, value)) + 
+  geom_line(col = adal_litur) +
+  geom_line(aes(y = trend), col = trend_litur) +
+  facet_wrap(~ name, scales = "free_y") +
+  theme_minimal() +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Fjöldiferðamanna í gegnum Keflavíkurflugvöll"
+  ) +
+  scale_y_continuous(label = number_format())
+
+vr_layout(p21)
+```
+
+
+## Row
+
+```{r, gistinaetur}
+p22 <- tourism_ls$gistinaetur |> 
+  filter(date >= date_from_x) |> 
+  mutate(fjoldi = as.numeric(fjoldi)) |> 
+  arrange(date, rikisfang) |> 
+  group_by(rikisfang) |> 
+  mutate(trend = rollapplyr(fjoldi, width = 12, FUN = mean, partial = TRUE)) |> 
+  ungroup() |> 
+  ggplot(aes(date, fjoldi)) +
+  facet_wrap(~ rikisfang) + 
+  geom_line(col = adal_litur) + 
+  geom_line(aes(y = trend), col = trend_litur) +
+  theme_minimal() +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Gistinætur á hótelum"
+  ) +
+  scale_y_continuous(label = number_format())
+
+vr_layout(p22)
+```
+
+
+```{r, kortavelta_erlend}
+p23 <- tourism_ls$kortavelta_erlend |>
+  arrange(date) |> 
+  filter(date >= date_from_x) |>
+  mutate(trend = rollapplyr(value, width = 12, FUN = mean, partial =  TRUE)) |> 
+  ggplot(aes(date, value)) + 
+  geom_line(col = adal_litur) +
+  geom_line(aes(y = trend), col = trend_litur) +
+  theme_minimal() +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Kortavelta erlendra ferðamanna"
+  ) +
+  scale_y_continuous(label = number_format())
+
+vr_layout(p23)
+```

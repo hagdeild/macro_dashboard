@@ -999,9 +999,12 @@ myigloo_tbl <- myigloo_data |>
 # Clean up
 b$close()
 
+myigloo_tbl |>
+  write_csv("data/myigloo.csv")
+
 husnaedi_ls$myigloo <- myigloo_tbl
 
-# 5.4.0 HÚSNÆÐISMARKAÐURINN SAMEINAÐ ----
+# 5.4.0 Húsnæðismarkaðurinn sameinað ----
 data_ls$husnaedi <- husnaedi_ls
 
 # * -----
@@ -1056,7 +1059,7 @@ stocks_tbl <- omx15_tbl |>
   drop_na() |>
   pivot_longer(cols = -date)
 
-data_ls$stocks <- stocks_tbl
+fjarmal_ls$stocks <- stocks_tbl
 
 
 # 6.2.0 Skuldabréf ----
@@ -1088,7 +1091,7 @@ skuldabref_uppdated_tbl <- bind_rows(
 skuldabref_uppdated_tbl |>
   write_csv("data/skuldabref.csv")
 
-data_ls$skuldabref <- skuldabref_uppdated_tbl
+fjarmal_ls$skuldabref <- skuldabref_uppdated_tbl
 
 # 6.3.0 Stýrivextir ----
 styrivextir_tbl <- read_csv("data/styrivextir.csv")
@@ -1105,7 +1108,7 @@ styrivextir_upd_tbl <- bind_rows(
   fill(styrivextir, .direction = "down")
 
 
-data_ls$styrivextir <- styrivextir_upd_tbl
+fjarmal_ls$styrivextir <- styrivextir_upd_tbl
 
 styrivextir_upd_tbl |>
   write_csv("data/styrivextir.csv")
@@ -1145,7 +1148,7 @@ if (day(today()) == days_in_month(today())) {
   data_ls$krafa <- krafa_updated_tbl
 }
 
-data_ls$krafa <- krafa_historical_tbl
+fjarmal_ls$krafa <- krafa_historical_tbl
 
 
 # 6.5.0 Gengi krónunnar ----
@@ -1196,7 +1199,7 @@ if (!date_text %in% unique(gengi_tbl$date)) {
     bind_rows(gengi_new)
 }
 
-data_ls$gengi <- gengi_tbl
+fjarmal_ls$gengi <- gengi_tbl
 
 # 6.6.0 Hrávöruverð ----
 commodity_series <- tribble(
@@ -1230,11 +1233,16 @@ commodities_tbl <- commodity_series |>
     )
   )
 
-data_ls$commodities <- commodities_tbl
+fjarmal_ls$commodities <- commodities_tbl
+
+# 6.7.0 Sameinað ----
+data_ls$fjarmal <- fjarmal_ls
 
 # * ----
 
 # 7.0.0 FERÐAÞJÓNUSTAN OG KORTAVELTA----
+
+tourism_ls <- list()
 
 # 7.1.0 Ferðamenn ----
 ferdamenn_tbl <- read_csv2(
@@ -1244,7 +1252,7 @@ ferdamenn_tbl <- read_csv2(
   mutate(date = make_date(str_sub(date, 1, 4), str_sub(date, 6, 7))) |>
   pivot_longer(cols = -date)
 
-data_ls$ferdamenn <- ferdamenn_tbl
+tourism_ls$ferdamenn <- ferdamenn_tbl
 
 
 # 7.2.0 Gistinætur ----
@@ -1259,7 +1267,7 @@ gisting_tbl <- gisting_tbl |>
   mutate(date = make_date(ar, man_no)) |>
   select(date, rikisfang, fjoldi)
 
-data_ls$gistinaetur <- gisting_tbl
+tourism_ls$gistinaetur <- gisting_tbl
 
 # 7.3.0 Kortavelta ----
 kortavelta_tbl <- read_excel("data/raw/kortavelta.xlsx", sheet = "Sheet1")
@@ -1280,7 +1288,7 @@ kortavelta_heimila_tbl <- kortavelta_tbl |>
     )
   )
 
-data_ls$kortavelta_heimili <- kortavelta_heimila_tbl
+tourism_ls$kortavelta_heimili <- kortavelta_heimila_tbl
 
 # 7.3.2 erlend ----
 kortavelta_erlend_tbl <- kortavelta_tbl |>
@@ -1298,12 +1306,16 @@ kortavelta_erlend_tbl <- kortavelta_tbl |>
     )
   )
 
-data_ls$kortavelta_erlend <- kortavelta_erlend_tbl
+tourism_ls$kortavelta_erlend <- kortavelta_erlend_tbl
 
+# 7.4.0 sameinað ----
+data_ls$tourism <- tourism_ls
 
 # * -----
 
 # 8.0.0 MANNFJÖLDI ----
+
+mannfjoldi_ls <- list()
 
 # 8.1.0 Pýramídi ----
 pyramidi_tbl <-
@@ -1322,7 +1334,7 @@ pyramidi_tbl <- pyramidi_tbl |>
     aldur = fct_inorder(aldur)
   )
 
-data_ls$aldurspyramidi <- pyramidi_tbl
+mannfjoldi_ls$aldurspyramidi <- pyramidi_tbl
 
 # ggplot(pyramidi_plot_tbl, aes(x = fjoldi_plot, y = aldur, fill = kyn)) +
 #   geom_col() +
@@ -1350,11 +1362,16 @@ flutningar_tbl <- read_csv2(
   select(-age) |>
   mutate(date = date(as.yearqtr(str_replace(date, "Á", "Q"))))
 
-data_ls$adfluttir_brottfluttir <- flutningar_tbl
+mannfjoldi_ls$adfluttir_brottfluttir <- flutningar_tbl
+
+# 8.3.0 sameinað ----
+data_ls$mannfjoldi <- mannfjoldi_ls
 
 # * ----
 
 # 9.0.0 STAÐA FYRIRTÆKJA ----
+
+ft_ls <- list()
 
 # 9.1.0 Rekstrarafgangur fyrirtækja ----
 tekjuskiptingaruppgjor_fyrirtaeki_tbl <-
@@ -1398,6 +1415,8 @@ tekjuskiptingaruppgjor_fyrirtaeki_tbl <- tekjuskiptingaruppgjor_fyrirtaeki_tbl |
   ) |>
   mutate(date = 2000:(year(today()) - 2))
 
+ft_ls$tekjuskiptingaruppgjor <- tekjuskiptingaruppgjor_fyrirtaeki_tbl
+
 # 9.2.0 Capacity utilization ----
 
 # 9.3.0 Gjaldþrot fyrirtækja ----
@@ -1412,7 +1431,7 @@ gjaldthrot_tbl <-
   set_names("date", "fjoldi") |>
   mutate(date = make_date(str_sub(date, 1, 4), str_sub(date, 6, 7)))
 
-data_ls$gjaldthrot <- gjaldthrot_tbl
+ft_ls$gjaldthrot <- gjaldthrot_tbl
 
 # 9.4.0 Nýskráningar fyrirtækja ----
 nyskraning_tbl <-
@@ -1424,7 +1443,7 @@ nyskraning_tbl <-
   mutate(date = make_date(str_sub(date, 1, 4), str_sub(date, 6, 7))) |>
   arrange(date)
 
-data_ls$nyskraningar <- nyskraning_tbl
+ft_ls$nyskraningar <- nyskraning_tbl
 
 # 9.5.0 Fjárfesting ----
 
@@ -1439,7 +1458,7 @@ vaentigar_fyrirtaekja_tbl <-
   rename("date" = "...2") |>
   mutate(date = date(date))
 
-data_ls$vaentingar_fyrirtaekja <- vaentigar_fyrirtaekja_tbl
+ft_ls$vaentingar_fyrirtaekja <- vaentigar_fyrirtaekja_tbl
 
 # 9.7.0 Útflutningsgreinarnar ----
 
@@ -1463,8 +1482,10 @@ sement_tbl <-
   rename("date" = "...1") |>
   mutate(date = date(date))
 
-data_ls$sement <- sement_tbl
+ft_ls$sement <- sement_tbl
 
+# 9.x.0 sameinað ----
+data_ls$fyrirtaeki <- ft_ls
 
 # * ----
 
