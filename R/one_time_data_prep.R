@@ -61,9 +61,9 @@ krafa_pm_tbl <- krafa_pm_tbl |>
     overdtryggd_10_ara = mean(overdtryggd_10_ara)
   )
 
-krafa_historical_tbl <- krafa_historical_tbl |>
-  filter(date <= max(krafa_pm_tbl$date)) |>
-  bind_rows(krafa_pm_tbl)
+# krafa_historical_tbl <- krafa_historical_tbl |>
+#   filter(date <= max(krafa_pm_tbl$date)) |>
+#   bind_rows(krafa_pm_tbl)
 
 krafa_historical_tbl |>
   write_csv("data/krafa.csv")
