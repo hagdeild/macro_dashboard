@@ -344,10 +344,11 @@ vr_layout(p8, tooltip_percent = TRUE)
 
 
 ```{r, framleidni}
+# þarf ekki trend, er að nota prodt
 p9 <- vinnumarkadur_ls$framleidni |> 
   mutate(
-    trend = rollapplyr(prod, width = 4, FUN = mean, partial = TRUE),
-    delta = trend / lag(trend, 4) - 1
+    #trend = rollapplyr(prod, width = 4, FUN = mean, partial = TRUE),
+    delta = prodt / lag(prodt, 4) - 1
     ) |> 
   filter(date >= date_from_x) |> 
   ggplot(aes(date, delta)) +

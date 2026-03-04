@@ -743,7 +743,7 @@ vinnumarkadurinn_ls$vinnulitlir <- vinnulitlir_tbl
 
 # 3.2.7 Framleiðni ----
 framleidni_tbl <- qmm_tbl |>
-  select(date, prod) |>
+  select(date, prodt) |>
   drop_na()
 
 vinnumarkadurinn_ls$framleidni <- framleidni_tbl
