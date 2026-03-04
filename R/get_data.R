@@ -501,7 +501,6 @@ erlend_stada_tbl <-
   select(date, erlend_stada)
 
 erlend_stada_tbl <- erlend_stada_tbl |>
-  left_join(gdp_nominal_qrt_tbl) |>
   mutate(erlend_stada_hlutfall = erlend_stada / gdp_q_sum)
 
 macro_ls$erlend_stada <- erlend_stada_tbl
@@ -968,61 +967,8 @@ husnaedi_ls$kaupverd <- kaupverd_tbl
 #   summarise(fjoldi = n_distinct(faerslunumer))
 
 # 5.4.0 Týpískt leiguverð ----
-# Scrapa gögn af myigloo.
-# Forsendur: 80-100fm, 2-3 herbergi, íbúð
-
-#myigloo_url <- "https://myigloo.is/listings?min_rooms=2&max_rooms=3&min_size=80&max_size=100&listing_type=1&sw_lat=64.03228552326259&sw_lng=-21.997847324902345&ne_lat=64.21971434210539&ne_lng=-21.707396275097658&order_by=-published_at"
-myigloo_url <- "https://myigloo.is/listings?min_size=80&max_size=120&listing_type=1&order_by=-published_at"
-
-# Start Chrome session
-b <- ChromoteSession$new()
-
-# Navigate to the page
-b$Page$navigate(myigloo_url)
-b$Page$loadEventFired() # Wait for page load
-Sys.sleep(3) # Extra wait for JS rendering
-
-# Function to scroll and load content
-scroll_and_load <- function(session, n_scrolls = 5, pause = 2) {
-  for (i in seq_len(n_scrolls)) {
-    session$Runtime$evaluate("window.scrollTo(0, document.body.scrollHeight);")
-    Sys.sleep(pause)
-    message(glue::glue("Scroll {i} of {n_scrolls} complete"))
-  }
-}
-
-# Scroll to load more listings
-scroll_and_load(b, n_scrolls = 40, pause = 2)
-
-# Get the page HTML
-html_result <- b$Runtime$evaluate("document.documentElement.outerHTML")
-page_html <- read_html(html_result$result$value)
-
-# Extract data using your CSS selectors
-myigloo_data <- page_html |>
-  html_elements(".text-color .text-muted-color , .p-tag-label") |>
-  html_text2()
-
-myigloo_data <- myigloo_data[!myigloo_data == "New"]
-
-myigloo_tbl <- myigloo_data |>
-  matrix(ncol = 2, byrow = TRUE) |>
-  as.data.frame() |>
-  as_tibble() |>
-  set_names("verd", "stadur") |>
-  mutate(
-    verd = str_replace(verd, ",", ""),
-    verd = str_remove(verd, " kr"),
-    verd = as.numeric(verd)
-  )
-
-# Clean up
-b$close()
-
-myigloo_tbl |>
-  write_csv("data/myigloo.csv")
-
-husnaedi_ls$myigloo <- myigloo_tbl
+# Gögn uppfærð daglega í macro_data_update.R
+husnaedi_ls$myigloo <- read_csv("data/myigloo.csv")
 
 # 5.4.0 Húsnæðismarkaðurinn sameinað ----
 data_ls$husnaedi <- husnaedi_ls

@@ -4,6 +4,7 @@
 library(tidyverse)
 library(YieldCurve)
 library(chromote)
+library(rvest)
 
 source("R/hjalparfoll.R")
 
@@ -106,3 +107,53 @@ if (!date_text %in% unique(gengi_tbl$date)) {
 
 gengi_tbl |>
   write_csv("data/gengisvisitala.csv")
+
+# 4.0.0 MYIGLOO ----
+
+myigloo_url <- "https://myigloo.is/listings?min_size=80&max_size=120&listing_type=1&order_by=-published_at"
+
+b <- ChromoteSession$new()
+
+b$Page$navigate(myigloo_url)
+b$Page$loadEventFired()
+Sys.sleep(3)
+
+scroll_and_load <- function(session, n_scrolls = 5, pause = 2) {
+  for (i in seq_len(n_scrolls)) {
+    session$Runtime$evaluate("window.scrollTo(0, document.body.scrollHeight);")
+    Sys.sleep(pause)
+    message(glue::glue("Scroll {i} of {n_scrolls} complete"))
+  }
+}
+
+scroll_and_load(b, n_scrolls = 40, pause = 2)
+
+html_result <- b$Runtime$evaluate("document.documentElement.outerHTML")
+page_html <- read_html(html_result$result$value)
+
+myigloo_data <- page_html |>
+  html_elements(".text-color .text-muted-color , .p-tag-label") |>
+  html_text2()
+
+myigloo_data <- myigloo_data[!myigloo_data == "New"]
+
+myigloo_new_tbl <- myigloo_data |>
+  matrix(ncol = 2, byrow = TRUE) |>
+  as.data.frame() |>
+  as_tibble() |>
+  set_names("verd", "stadur") |>
+  mutate(
+    verd = str_replace(verd, ",", ""),
+    verd = str_remove(verd, " kr"),
+    verd = as.numeric(verd),
+    date = today()
+  )
+
+b$close()
+
+myigloo_historical_tbl <- read_csv("data/myigloo.csv")
+
+myigloo_updated_tbl <- bind_rows(myigloo_historical_tbl, myigloo_new_tbl)
+
+myigloo_updated_tbl |>
+  write_csv("data/myigloo.csv")
