@@ -12,6 +12,7 @@ library(timetk)
 library(YieldCurve)
 library(fredr)
 library(tidyquant)
+library(forecast)
 
 fredr_set_key(Sys.getenv("FRED_API_KEY"))
 
@@ -78,10 +79,29 @@ mannfjoldi_qrt_tbl <- read_csv2(
     date = date(zoo::as.yearqtr(date))
   )
 
+# forecast 1 qrt
+mannfjoldi_fc <- mannfjoldi_qrt_tbl |>
+  pull(mannfjoldi) |>
+  ts(
+    start = c(
+      year(min(mannfjoldi_qrt_tbl$date)),
+      quarter(min(mannfjoldi_qrt_tbl$date))
+    ),
+    frequency = 4
+  ) |>
+  forecast::auto.arima() |>
+  forecast::forecast(h = 1)
+
+mannfjoldi_qrt_tbl <- mannfjoldi_qrt_tbl |>
+  add_row(
+    date = max(mannfjoldi_qrt_tbl$date) %m+% months(3),
+    mannfjoldi = as.numeric(mannfjoldi_fc$mean)
+  )
+
 # Convert to ts object (tempdisagg requires this)
 mannfjoldi_qrt_ts <- ts(
   mannfjoldi_qrt_tbl$mannfjoldi,
-  start = c(2011, 1),
+  start = c(2011, 2),
   frequency = 4
 )
 
@@ -96,7 +116,7 @@ monthly_td <- td(
 # Convert back to tibble
 mannfjoldi_monthly_tbl <- tibble(
   date = seq.Date(
-    from = as.Date("2011-01-01"),
+    from = as.Date("2011-04-01"),
     by = "month",
     length.out = length(predict(monthly_td))
   ),
