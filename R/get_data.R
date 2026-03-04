@@ -1384,3 +1384,14 @@ data_ls$fyrirtaeki <- ft_ls
 # SAVE DATA ----
 data_ls |>
   write_rds("full_data.rds")
+
+
+# GITHUB ----
+system("git add .")
+# Only commit if there are staged changes
+status <- system("git diff --cached --quiet")
+if (status != 0) {
+  msg <- paste0("Auto update data ", Sys.time())
+  system(paste0('git commit -m "', msg, '"'))
+  system("git push origin main")
+}
