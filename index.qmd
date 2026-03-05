@@ -1,5 +1,4 @@
 ---
-title: "Staða íslenska hagkerfisins"
 format:
     dashboard:
         theme: flatly
