@@ -5,7 +5,7 @@ library(vr)
 
 # Macro data daily update
 schedule_r_script(
-  rscript = "macro_dashboard/R/macro_data_update.R",
+  rscript = "R/macro_data_update.R",
   taskname = "macro_data_update",
   schedule = "DAILY",
   starttime = "20:00"

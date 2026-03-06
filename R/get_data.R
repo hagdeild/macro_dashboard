@@ -288,9 +288,9 @@ vidskiptajofnudur_tbl <- vidskiptajofnudur_tbl |>
     vidskiptajofnudur = if_else(an_gomlu == 0, vidskiptajofnudur, an_gomlu)
   ) |>
   select(date, vidskiptajofnudur) |>
-  left_join(gdp_tbl) |>
+  left_join(gdp_nominal_qrt_tbl) |>
   drop_na() |>
-  mutate(hlutfall = vidskiptajofnudur / gdp)
+  mutate(hlutfall = vidskiptajofnudur / gdp_q_sum)
 
 macro_ls$vidskiptajofnudur <- vidskiptajofnudur_tbl
 
