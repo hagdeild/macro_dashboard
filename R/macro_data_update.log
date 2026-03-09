@@ -1,0 +1,78 @@
+================================ 
+Started: fös. 06.03.2026 20:00:00,51 
+── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+✔ dplyr     1.2.0     ✔ readr     2.2.0
+✔ forcats   1.0.1     ✔ stringr   1.6.0
+✔ ggplot2   4.0.2     ✔ tibble    3.3.1
+✔ lubridate 1.9.5     ✔ tidyr     1.3.2
+✔ purrr     1.2.1     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ dplyr::filter() masks stats::filter()
+✖ dplyr::lag()    masks stats::lag()
+ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+Warning messages:
+1: package 'ggplot2' was built under R version 4.5.2 
+2: package 'tibble' was built under R version 4.5.2 
+3: package 'tidyr' was built under R version 4.5.2 
+4: package 'readr' was built under R version 4.5.2 
+5: package 'purrr' was built under R version 4.5.2 
+6: package 'dplyr' was built under R version 4.5.2 
+7: package 'stringr' was built under R version 4.5.2 
+8: package 'forcats' was built under R version 4.5.2 
+9: package 'lubridate' was built under R version 4.5.2 
+Error in library(YieldCurve) : there is no package called 'YieldCurve'
+Execution halted
+Exit code: 1 
+Finished: fös. 06.03.2026 20:00:08,69 
+================================ 
+Started: lau. 07.03.2026 20:00:01,14 
+── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+✔ dplyr     1.2.0     ✔ readr     2.2.0
+✔ forcats   1.0.1     ✔ stringr   1.6.0
+✔ ggplot2   4.0.2     ✔ tibble    3.3.1
+✔ lubridate 1.9.5     ✔ tidyr     1.3.2
+✔ purrr     1.2.1     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ dplyr::filter() masks stats::filter()
+✖ dplyr::lag()    masks stats::lag()
+ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+Warning messages:
+1: package 'ggplot2' was built under R version 4.5.2 
+2: package 'tibble' was built under R version 4.5.2 
+3: package 'tidyr' was built under R version 4.5.2 
+4: package 'readr' was built under R version 4.5.2 
+5: package 'purrr' was built under R version 4.5.2 
+6: package 'dplyr' was built under R version 4.5.2 
+7: package 'stringr' was built under R version 4.5.2 
+8: package 'forcats' was built under R version 4.5.2 
+9: package 'lubridate' was built under R version 4.5.2 
+Error in library(YieldCurve) : there is no package called 'YieldCurve'
+Execution halted
+Exit code: 1 
+Finished: lau. 07.03.2026 20:00:06,97 
+================================ 
+Started: sun. 08.03.2026 20:00:01,18 
+── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+✔ dplyr     1.2.0     ✔ readr     2.2.0
+✔ forcats   1.0.1     ✔ stringr   1.6.0
+✔ ggplot2   4.0.2     ✔ tibble    3.3.1
+✔ lubridate 1.9.5     ✔ tidyr     1.3.2
+✔ purrr     1.2.1     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ dplyr::filter() masks stats::filter()
+✖ dplyr::lag()    masks stats::lag()
+ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+Warning messages:
+1: package 'ggplot2' was built under R version 4.5.2 
+2: package 'tibble' was built under R version 4.5.2 
+3: package 'tidyr' was built under R version 4.5.2 
+4: package 'readr' was built under R version 4.5.2 
+5: package 'purrr' was built under R version 4.5.2 
+6: package 'dplyr' was built under R version 4.5.2 
+7: package 'stringr' was built under R version 4.5.2 
+8: package 'forcats' was built under R version 4.5.2 
+9: package 'lubridate' was built under R version 4.5.2 
+Error in library(YieldCurve) : there is no package called 'YieldCurve'
+Execution halted
+Exit code: 1 
+Finished: sun. 08.03.2026 20:00:06,85 

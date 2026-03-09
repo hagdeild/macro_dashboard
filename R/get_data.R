@@ -501,6 +501,7 @@ erlend_stada_tbl <-
   select(date, erlend_stada)
 
 erlend_stada_tbl <- erlend_stada_tbl |>
+  left_join(gdp_nominal_qrt_tbl) |> 
   mutate(erlend_stada_hlutfall = erlend_stada / gdp_q_sum)
 
 macro_ls$erlend_stada <- erlend_stada_tbl
