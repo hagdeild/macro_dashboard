@@ -134,6 +134,31 @@ mannfjoldi_vinnufaer_year_tbl <-
   group_by(ar) |>
   summarise(mannfjoldi = sum(mannfjoldi))
 
+mannfjoldi_ts <- ts(
+  mannfjoldi_vinnufaer_year_tbl$mannfjoldi,
+  start = min(mannfjoldi_vinnufaer_year_tbl$ar),
+  frequency = 1
+)
+
+# Fit both models
+fit_arima <- auto.arima(mannfjoldi_ts)
+fit_ets <- ets(mannfjoldi_ts)
+
+# Forecast 1 year ahead
+fc_arima <- forecast(fit_arima, h = 1)
+fc_ets <- forecast(fit_ets, h = 1)
+
+# Average the two point forecasts
+fc_avg <- mean(c(as.numeric(fc_arima$mean), as.numeric(fc_ets$mean)))
+
+# Add to original tibble
+mannfjoldi_vinnufaer_year_tbl <- mannfjoldi_vinnufaer_year_tbl |>
+  bind_rows(
+    tibble(
+      ar = max(mannfjoldi_vinnufaer_year_tbl$ar) + 1,
+      mannfjoldi = round(fc_avg)
+    )
+  )
 
 mannfjoldi_vinnufaer_year_ts <- ts(
   mannfjoldi_vinnufaer_year_tbl$mannfjoldi,
