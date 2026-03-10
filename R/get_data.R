@@ -66,6 +66,25 @@ man_tbl <- tibble(
   man_no = 1:12
 )
 
+man_short_tbl <-
+  tibble(
+    manudir = c(
+      "jan",
+      "feb",
+      "mar",
+      "apr",
+      "maí",
+      "jún",
+      "júl",
+      "ágú",
+      "sep",
+      "okt",
+      "nóv",
+      "des"
+    ),
+    man_no = 1:12
+  )
+
 # 1.1.0 Sameiginleg gögn ----
 
 # 1.1.1 Mannfjöldi ----
@@ -1058,6 +1077,18 @@ skuldabref_uppdated_tbl |>
   write_csv("data/skuldabref.csv")
 
 fjarmal_ls$skuldabref <- skuldabref_uppdated_tbl
+
+# 6.2.1 Eigendur ríkisbréfa ----
+eigendur_rikisbrefa_tbl <- read_csv2("data/eigendur_rikisverdbrefa.csv") |>
+  select(1:3, contains("Erlendir")) |>
+  janitor::clean_names() |>
+  left_join(man_short_tbl, by = c("manudur" = "manudir")) |>
+  mutate(date = make_date(ar, man_no)) |>
+  group_by(date) |>
+  summarise(eign = sum(erlendir_adilar, na.rm = TRUE))
+
+fjarmal_ls$eign_erlendra <- eigendur_rikisbrefa_tbl
+
 
 # 6.3.0 Stýrivextir ----
 styrivextir_tbl <- read_csv("data/styrivextir.csv")
