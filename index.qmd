@@ -618,6 +618,21 @@ vr_layout(p18)
 ```
 
 
+```{r, eign_erlendra}
+p18a <- finance_ls$eign_erlendra |> 
+  ggplot(aes(date, hlutfall)) +
+  geom_line() + 
+  theme_minimal() +
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "Eign erlendra aðila í ríkisskuldabréfum - Hlutfall af heild"
+  ) +
+  scale_y_continuous(labels = percent)
+
+vr_layout(p18a, tooltip_percent = TRUE)
+```
+
 ## Row
 
 ```{r, gengi}

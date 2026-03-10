@@ -545,7 +545,7 @@ erlend_stada_tbl <-
   select(date, erlend_stada)
 
 erlend_stada_tbl <- erlend_stada_tbl |>
-  left_join(gdp_nominal_qrt_tbl) |> 
+  left_join(gdp_nominal_qrt_tbl) |>
   mutate(erlend_stada_hlutfall = erlend_stada / gdp_q_sum)
 
 macro_ls$erlend_stada <- erlend_stada_tbl
@@ -1112,6 +1112,19 @@ eigendur_rikisbrefa_tbl <- read_csv2("data/eigendur_rikisverdbrefa.csv") |>
   mutate(date = make_date(ar, man_no)) |>
   group_by(date) |>
   summarise(eign = sum(erlendir_adilar, na.rm = TRUE))
+
+heildarupphaed_verdbrefa_tbl <- read_csv2("data/eigendur_rikisverdbrefa.csv") |>
+  janitor::clean_names() |>
+  left_join(man_short_tbl, by = c("manudur" = "manudir")) |>
+  mutate(date = make_date(ar, man_no)) |>
+  select(-c(ar, manudur, heiti, man_no)) |>
+  pivot_longer(cols = -date) |>
+  group_by(date) |>
+  summarise(heildarupphaed = sum(value, na.rm = TRUE))
+
+eigendur_rikisbrefa_tbl <- eigendur_rikisbrefa_tbl |>
+  left_join(heildarupphaed_verdbrefa_tbl) |>
+  mutate(hlutfall = eign / heildarupphaed)
 
 fjarmal_ls$eign_erlendra <- eigendur_rikisbrefa_tbl
 
