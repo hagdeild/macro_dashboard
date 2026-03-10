@@ -17,3 +17,5 @@ Thumbs.db
 *_files/
 *.html
 **/*.quarto_ipynb
+
+*.log
