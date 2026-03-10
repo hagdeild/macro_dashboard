@@ -16,3 +16,4 @@ Thumbs.db
 # Quarto rendered output dependencies
 *_files/
 *.html
+**/*.quarto_ipynb

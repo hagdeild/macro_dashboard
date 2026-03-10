@@ -115,7 +115,8 @@ myigloo_url <- "https://myigloo.is/listings?min_size=80&max_size=120&listing_typ
 b <- ChromoteSession$new()
 
 b$Page$navigate(myigloo_url)
-b$Page$loadEventFired()
+Sys.sleep(3)
+#b$Page$loadEventFired()
 Sys.sleep(3)
 
 scroll_and_load <- function(session, n_scrolls = 5, pause = 2) {
