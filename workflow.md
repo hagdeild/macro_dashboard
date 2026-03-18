@@ -13,8 +13,8 @@ Source: https://sedlabanki.is/frettir-og-utgefid-efni/rit-og-skyrslur/
 | HV_Tolur_i_myndir_V_Opinber_fjarmal.xlsx | data/hagvisar/ | get_data.R | 2.6.0 Skuldir rikisins |
 | HV_Tolur_i_myndir_II_Framleidsla_og_eftirspurn.xlsx | data/hagvisar/ | get_data.R | 9.6.0 Vaentingar fyrirtaekja, 9.8.1 Sementssala |
 
-### From Peningamal Sedlabankans
-Source: https://sedlabanki.is/frettir-og-utgefid-efni/rit-og-skyrslur/
+### From Sedlabanki website
+Source: https://sedlabanki.is/peningastefna/verdbolguvaentingar-a-mismunandi-maelikvarda/
 
 | File | Location | Used in | Section |
 |------|----------|---------|---------|

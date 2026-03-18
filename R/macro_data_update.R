@@ -34,7 +34,6 @@ krafa_new_ls <- daily_yield_update()
 krafa_new_ls$yields |>
   write_csv(paste0("data/lanamal/", base_path, "krafa.csv"))
 
-if (day(today()) == days_in_month(today())) {
   temp_krafa_tbl <- list.files("data/lanamal/") |>
     (\(x) paste0(getwd(), "/data/lanamal/", x))() |>
     map(.f = ~ read_csv(.)) |>
@@ -46,7 +45,8 @@ if (day(today()) == days_in_month(today())) {
     mutate(
       overdtryggd_5_ara = mean(overdtryggd_5_ara, na.rm = TRUE),
       overdtryggd_10_ara = mean(overdtryggd_10_ara, na.rm = TRUE)
-    )
+    ) |> 
+    distinct()
 
   krafa_updated_tbl <- krafa_historical_tbl |>
     bind_rows(kraf_new_tbl)
@@ -54,14 +54,11 @@ if (day(today()) == days_in_month(today())) {
   krafa_updated_tbl |>
     write_csv("data/krafa.csv")
 
-  data_ls$krafa <- krafa_updated_tbl
-}
+# data_ls$krafa <- krafa_updated_tbl
 
 # 3.0.0 GENGISVÍSITALA ----
-gengi_tbl <- read_csv2("data/raw/gengisvisitala.csv") |>
-  select(1:2) |>
+gengi_tbl <- read_csv("data/gengisvisitala.csv") |>
   set_names("date", "gengi") |>
-  mutate(date = dmy(date)) |>
   arrange(date)
 
 
