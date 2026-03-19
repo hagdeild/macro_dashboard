@@ -186,20 +186,26 @@ daily_yield_update <- function() {
   # Scrape today's data
   bonds_today <- scrape_lanamal()
 
-  # Calculate yields
-  yields_today <- calculate_yields(bonds_today) |>
+  # Split into nominal (RIKB) and indexed (RIKS) bonds
+  nominal_bonds <- bonds_today |> filter(str_starts(bond, "RIKB"))
+  indexed_bonds <- bonds_today |> filter(str_starts(bond, "RIKS"))
+
+  # Fit Nelson-Siegel separately for each type
+  nominal_yields <- calculate_yields(nominal_bonds) |>
     select(date, yield_5y, yield_10y) |>
     set_names("date", "overdtryggd_5_ara", "overdtryggd_10_ara")
 
-  # # Append to historical file
-  # if(file.exists(output_file)) {
-  #   #historical <- read_csv(output_file, show_col_types = FALSE)
-  #   updated <- bind_rows(historical, yields_today) %>%
-  #     distinct(date, .keep_all = TRUE) %>%
-  #     arrange(date)
-  # } else {
-  #   updated <- yields_today
-  # }
+  indexed_yields <- tryCatch(
+    calculate_yields(indexed_bonds) |>
+      select(yield_5y, yield_10y) |>
+      set_names("verdtryggd_5_ara", "verdtryggd_10_ara"),
+    error = function(e) {
+      warning("Nelson-Siegel fit failed for indexed bonds: ", e$message)
+      tibble(verdtryggd_5_ara = NA_real_, verdtryggd_10_ara = NA_real_)
+    }
+  )
+
+  yields_today <- bind_cols(nominal_yields, indexed_yields)
 
   return(list(bonds = bonds_today, yields = yields_today))
 }

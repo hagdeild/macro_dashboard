@@ -601,7 +601,8 @@ vr_layout(p17)
 
 ```{r, skuldabref_krafa}
 p18 <- finance_ls$krafa |>
-  filter(date >= date_from_x) |> 
+  filter(date >= date_from_x) |>
+  select(date, overdtryggd_5_ara, overdtryggd_10_ara) |>
   set_names("date", "5 ára", "10 ára") |>
   pivot_longer(cols = -date) |> 
   ggplot(aes(date, value, col = name)) + 

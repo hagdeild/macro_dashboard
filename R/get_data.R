@@ -1158,6 +1158,11 @@ krafa_historical_tbl <- read_csv("data/krafa.csv")
 
 fjarmal_ls$krafa <- krafa_historical_tbl
 
+# Daily yield data for monitoring
+krafa_daily_path <- "data/lanamal/krafa_daily.csv"
+if (file.exists(krafa_daily_path)) {
+  fjarmal_ls$krafa_daily <- read_csv(krafa_daily_path, show_col_types = FALSE)
+}
 
 # 6.5.0 Gengi krónunnar ----
 
