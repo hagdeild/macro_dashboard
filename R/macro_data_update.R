@@ -27,34 +27,72 @@ base_path <- paste0(year_use, "-", month_use, "-", day_use, "_")
 
 # 2.0.0 KRAFA ----
 
-krafa_historical_tbl <- read_csv("data/krafa.csv")
-
+# Scrape today's yields
 krafa_new_ls <- daily_yield_update()
+yields_today <- krafa_new_ls$yields
 
-krafa_new_ls$yields |>
-  write_csv(paste0("data/lanamal/", base_path, "krafa.csv"))
+# Save raw per-bond data
+bonds_path <- "data/lanamal/bonds_daily.csv"
+bonds_today <- krafa_new_ls$bonds
 
-  temp_krafa_tbl <- list.files("data/lanamal/") |>
-    (\(x) paste0(getwd(), "/data/lanamal/", x))() |>
-    map(.f = ~ read_csv(.)) |>
-    bind_rows()
+if (file.exists(bonds_path)) {
+  bonds_daily_tbl <- read_csv(bonds_path, show_col_types = FALSE)
+} else {
+  bonds_daily_tbl <- bonds_today[0, ]
+}
 
-  kraf_new_tbl <- temp_krafa_tbl |>
+if (!Sys.Date() %in% unique(bonds_daily_tbl$date)) {
+  bonds_daily_tbl <- bind_rows(bonds_daily_tbl, bonds_today) |>
+    arrange(date, bond)
+  write_csv(bonds_daily_tbl, bonds_path)
+}
+
+# Append to daily file (skip if today already exists)
+daily_path <- "data/lanamal/krafa_daily.csv"
+
+if (file.exists(daily_path)) {
+  krafa_daily_tbl <- read_csv(daily_path, show_col_types = FALSE)
+} else {
+  krafa_daily_tbl <- tibble(
+    date = Date(),
+    overdtryggd_5_ara = numeric(),
+    overdtryggd_10_ara = numeric(),
+    verdtryggd_5_ara = numeric(),
+    verdtryggd_10_ara = numeric()
+  )
+}
+
+if (!Sys.Date() %in% krafa_daily_tbl$date) {
+  krafa_daily_tbl <- bind_rows(krafa_daily_tbl, yields_today) |>
+    arrange(date)
+  write_csv(krafa_daily_tbl, daily_path)
+}
+
+# Rebuild monthly krafa.csv: historical (pre-daily) + monthly means of daily data
+if (nrow(krafa_daily_tbl) > 0) {
+  daily_min_date <- floor_date(min(krafa_daily_tbl$date), "month")
+
+  krafa_historical_tbl <- read_csv("data/krafa.csv", show_col_types = FALSE) |>
+    filter(date < daily_min_date)
+
+  krafa_monthly_new_tbl <- krafa_daily_tbl |>
     mutate(date = floor_date(date, "month")) |>
     group_by(date) |>
-    mutate(
+    summarise(
       overdtryggd_5_ara = mean(overdtryggd_5_ara, na.rm = TRUE),
-      overdtryggd_10_ara = mean(overdtryggd_10_ara, na.rm = TRUE)
-    ) |> 
-    distinct()
+      overdtryggd_10_ara = mean(overdtryggd_10_ara, na.rm = TRUE),
+      verdtryggd_5_ara = mean(verdtryggd_5_ara, na.rm = TRUE),
+      verdtryggd_10_ara = mean(verdtryggd_10_ara, na.rm = TRUE),
+      .groups = "drop"
+    )
 
-  krafa_updated_tbl <- krafa_historical_tbl |>
-    bind_rows(kraf_new_tbl)
+  krafa_updated_tbl <- bind_rows(krafa_historical_tbl, krafa_monthly_new_tbl) |>
+    arrange(date)
+} else {
+  krafa_updated_tbl <- read_csv("data/krafa.csv", show_col_types = FALSE)
+}
 
-  krafa_updated_tbl |>
-    write_csv("data/krafa.csv")
-
-# data_ls$krafa <- krafa_updated_tbl
+write_csv(krafa_updated_tbl, "data/krafa.csv")
 
 # 3.0.0 GENGISVÍSITALA ----
 gengi_tbl <- read_csv("data/gengisvisitala.csv") |>
