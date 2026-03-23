@@ -9,7 +9,7 @@ taskscheduler_create(
   rscript = "c:/Users/vidar/Documents/Rwd/macro_dashboard/R/macro_data_update.R",
   schedule = "DAILY",
   starttime = "20:00",
-  startd format(Sys.Date(), "%d.%m.%Y")
+  startdate = format(Sys.Date(), "%d.%m.%Y")
 )
 
 
