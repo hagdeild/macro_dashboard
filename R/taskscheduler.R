@@ -18,7 +18,7 @@ taskscheduler_create(
   taskname = "macro_full_data",
   rscript = "c:/Users/vidar/Documents/Rwd/macro_dashboard/R/get_data.R",
   schedule = "WEEKLY",
-  starttime = "09:05",
+  starttime = "17:00",
   days = "MON"
 )
 
