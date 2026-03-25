@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:lanamal.is)"
+      "WebFetch(domain:lanamal.is)",
+      "Bash(cmd /c \"dir \"\"C:\\\\Program Files\\\\R\"\" /b\")",
+      "Bash(cmd /c \"dir C:\\\\R /b 2>&1 & dir C:\\\\PROGRA~1 /b 2>&1 | findstr /i \"\"^r\"\"\")",
+      "Bash(cmd /c \"reg query HKLM\\\\SOFTWARE\\\\R-core\\\\R /v InstallPath 2>&1\")",
+      "Bash(cmd /c \"reg query HKLM\\\\SOFTWARE\\\\R-core /s 2>&1 | head -20\")",
+      "Bash(cmd /c \"powershell -Command \"\"Get-Command Rscript -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source; Get-ItemProperty ''HKLM:\\\\SOFTWARE\\\\R-core\\\\R'' -ErrorAction SilentlyContinue | Select-Object InstallPath; Get-ItemProperty ''HKLM:\\\\SOFTWARE\\\\WOW6432Node\\\\R-core\\\\R'' -ErrorAction SilentlyContinue | Select-Object InstallPath\"\"\")",
+      "Bash(powershell -Command \"Get-Command Rscript -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")"
     ]
   }
 }

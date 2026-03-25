@@ -2,6 +2,7 @@
 
 library(taskscheduleR)
 
+rexe <- "C:/PROGRA~1/R/R-4.3.1/bin/x64/Rscript.exe"
 
 # Macro data daily update
 taskscheduler_create(
@@ -9,7 +10,8 @@ taskscheduler_create(
   rscript = "c:/Users/vidar/Documents/Rwd/macro_dashboard/R/macro_data_update.R",
   schedule = "DAILY",
   starttime = "20:00",
-  startdate = format(Sys.Date(), "%d.%m.%Y")
+  startdate = format(Sys.Date(), "%d.%m.%Y"),
+  Rexe = rexe
 )
 
 
@@ -19,6 +21,7 @@ taskscheduler_create(
   rscript = "c:/Users/vidar/Documents/Rwd/macro_dashboard/R/get_data.R",
   schedule = "WEEKLY",
   starttime = "17:00",
-  days = "MON"
+  days = "MON",
+  Rexe = rexe
 )
 
