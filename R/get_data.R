@@ -1347,7 +1347,8 @@ ft_ls <- list()
 # 9.1.0 Rekstrarafgangur fyrirtækja ----
 tekjuskiptingaruppgjor_fyrirtaeki_tbl <-
   read_csv2(
-    "https://px.hagstofa.is:443/pxis/sq/9c667800-7615-47ef-90ee-b354563a38a7"
+    "https://px.hagstofa.is:443/pxis/sq/9c667800-7615-47ef-90ee-b354563a38a7",
+    na = ".."
   ) |>
   clean_names()
 
