@@ -11,8 +11,11 @@ library(rvest)
 library(timetk)
 library(YieldCurve)
 library(fredr)
+library(httr)
 library(tidyquant)
 library(forecast)
+
+setwd("c:/Users/vidar/Documents/Rwd/macro_dashboard")
 
 fredr_set_key(Sys.getenv("FRED_API_KEY"))
 
@@ -1044,9 +1047,10 @@ fjarmal_ls <- list()
 
 # omxi15_hist_tbl <- read_csv("data/raw/omxi15.csv")
 
-omx15_tbl <- read_csv(
-  "https://fred.stlouisfed.org/graph/fredgraph.csv?id=NASDAQOMXI15"
-) |>
+omx15_url <- "https://fred.stlouisfed.org/graph/fredgraph.csv?id=NASDAQOMXI15"
+omx15_tbl <- httr::GET(omx15_url, httr::config(http_version = 1)) |>
+  httr::content(as = "text", encoding = "UTF-8") |>
+  read_csv() |>
   set_names("date", "price") |>
   fill(price, .direction = "down")
 #filter(date > max(omxi15_hist_tbl$date))

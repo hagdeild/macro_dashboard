@@ -6,6 +6,8 @@ library(YieldCurve)
 library(chromote)
 library(rvest)
 
+setwd("c:/Users/vidar/Documents/Rwd/macro_dashboard")
+
 source("R/hjalparfoll.R")
 
 # dagsetningar
