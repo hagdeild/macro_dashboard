@@ -34,3 +34,23 @@
 .quarto-dashboard .bslib-value-box .card-body {
   padding-block: 0.6rem;
 }
+
+/* Language toggle button */
+.lang-toggle {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  z-index: 9999;
+}
+.lang-toggle a {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: #fff;
+  background: #00305c;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+.lang-toggle a:hover {
+  background: #028fbc;
+}
