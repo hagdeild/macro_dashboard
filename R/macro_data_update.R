@@ -195,3 +195,6 @@ myigloo_updated_tbl <- bind_rows(myigloo_historical_tbl, myigloo_new_tbl)
 
 myigloo_updated_tbl |>
   write_csv("data/myigloo.csv")
+
+
+print("Uppfærslu lokið")
