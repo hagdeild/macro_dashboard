@@ -1017,20 +1017,20 @@ husnaedi_ls$kaupverd <- kaupverd_tbl
 # 5.4.0 Týpískt leiguverð ----
 # Gögn uppfærð daglega í macro_data_update.R
 
-myigloo_tbl <- read_csv("data/myigloo.csv")
+myigloo_raw_tbl <- read_csv("data/myigloo.csv")
 
-myigloo_tbl <- myigloo_tbl |> 
+myigloo_tbl <- myigloo_raw_tbl |> 
   separate_wider_regex(
     stadur,
     patterns = c(ponr = "\\d+", "\\s+", stadur = ".*")
   ) |> 
   group_by(date, stadur) |> 
-  summarise(verd = mean(verd))
+  summarise(verd = mean(verd)) |> 
+  ungroup()
 
-myigloo_tbl <- myigloo_tbl |> 
-  group_by(date,)
 
-husnaedi_ls$myigloo <- myigloo_tbl
+husnaedi_ls$myigloo_index <- myigloo_tbl
+husnaedi_ls$myigloo_raw <- myigloo_raw_tbl
 
 # 5.4.0 Húsnæðismarkaðurinn sameinað ----
 data_ls$husnaedi <- husnaedi_ls

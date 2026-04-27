@@ -553,7 +553,9 @@ vr_layout(p15)
 ## Row
 
 ```{r, typical_price}
-p16 <- hus_ls$myigloo |> separate_wider_delim(cols = stadur, delim = " ", names = c("pnr", "stadur"), too_many = "merge") |>
+p16a <- hus_ls$myigloo_raw |> 
+  filter(date == max(date)) |> 
+  separate_wider_delim(cols = stadur, delim = " ", names = c("pnr", "stadur"), too_many = "merge") |>
   filter(stadur %in% c("Reykjavík", "Hafnarfjörður", "Kópavogur", "Mosfellsbær", "Garðabær")) |>
   ggplot(aes(x = reorder(stadur, verd, median), y = verd)) +
   geom_boxplot(outlier.shape = NA, fill = "steelblue", alpha = 0.3) +
@@ -567,9 +569,27 @@ p16 <- hus_ls$myigloo |> separate_wider_delim(cols = stadur, delim = " ", names 
   coord_flip() +
   theme_minimal()
 
-vr_layout(p16)
+vr_layout(p16a)
 
 ```
+
+
+```{r, typical_price_index}
+p16b <- hus_ls$myigloo_index |> 
+  filter(stadur %in% c("Reykjavík", "Hafnarfjörður", "Kópavogur", "Mosfellsbær", "Garðabær")) |>
+  ggplot(aes(x = date, y = verd, col = stadur)) +
+  geom_line() + 
+  labs(
+    x = NULL,
+    y = NULL,
+    title = t("chart_rent_myigloo")
+    ) +
+  theme_minimal()
+
+vr_layout(p16b)
+
+```
+
 
 
 # `r t("tab_finance")`
