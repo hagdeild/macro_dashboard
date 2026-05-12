@@ -658,7 +658,7 @@ minnkad_starfshlutfall_tbl <- tibble::tibble(
 vmst_unemp_tbl <- read_excel(
   temp_file,
   sheet = "G2",
-  range = "C7:RA9"
+  range = "C7:UA9"
 ) |>
   slice(2) |>
   pivot_longer(cols = everything()) |>
@@ -690,7 +690,7 @@ minnkad_ratio_tbl <- vmst_unemp_tbl |>
 atvinnuleysi_tbl <- read_excel(
   temp_file,
   sheet = "G3",
-  range = "D6:RA8"
+  range = "D6:UA8"
 ) |>
   slice(2) |>
   pivot_longer(cols = everything()) |>
