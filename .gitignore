@@ -1,5 +1,4 @@
 # Quarto build output
-_site/
 .quarto/
 
 # R session files
@@ -13,7 +12,8 @@ _site/
 Thumbs.db
 /.quarto/
 
-# Quarto rendered output dependencies
+# Quarto rendered output (rebuilt by dashboard-portal CI on every push)
+_site/
 *_files/
 *.html
 **/*.quarto_ipynb
