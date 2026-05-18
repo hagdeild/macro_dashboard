@@ -1489,3 +1489,6 @@ if (status != 0) {
   system(paste0('git commit -m "', msg, '"'))
   system("git push origin main")
 }
+
+
+print(paste0("Uppfærslu lokið - ", today()))

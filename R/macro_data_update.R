@@ -197,4 +197,4 @@ myigloo_updated_tbl |>
   write_csv("data/myigloo.csv")
 
 
-print("Uppfærslu lokið")
+print(paste0("Uppfærslu lokið - ", today()))
