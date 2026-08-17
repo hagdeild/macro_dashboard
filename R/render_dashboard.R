@@ -1,6 +1,6 @@
 # Render both language versions of the dashboard
 
-setwd("c:/Users/vidar/Documents/Rwd/macro_dashboard")
+setwd("c:/Users/hd/Rwd/macro_dashboard")
 
 # Icelandic version → _site/index.html
 system2("quarto", c(

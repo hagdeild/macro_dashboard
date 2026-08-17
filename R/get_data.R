@@ -1,6 +1,13 @@
 # Sæki gögn fyrir mælaborð
 
 # 1.0.0 SETUP ----
+
+# Must come before any library() call: points .libPaths() at the machine-wide
+# package library and loads credentials (DB plus FRED_API_KEY, consumed by
+# fredr_set_key() below) from a real local file rather than through HOME/~.
+# See C:/R/rwd_setup.R.
+source("C:/R/rwd_setup.R")
+
 library(tidyverse)
 library(zoo)
 library(tempdisagg)
@@ -15,7 +22,7 @@ library(httr)
 library(tidyquant)
 library(forecast)
 
-setwd("c:/Users/vidar/Documents/Rwd/macro_dashboard")
+setwd("c:/Users/hd/Rwd/macro_dashboard")
 
 fredr_set_key(Sys.getenv("FRED_API_KEY"))
 

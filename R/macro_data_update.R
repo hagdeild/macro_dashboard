@@ -1,12 +1,18 @@
 # Uppfærsla gagna
 
 # 1.0.0 SETUP ----
+
+# Must come before any library() call: points .libPaths() at the machine-wide
+# package library and loads credentials from a real local file rather than
+# through HOME/~. See C:/R/rwd_setup.R.
+source("C:/R/rwd_setup.R")
+
 library(tidyverse)
 library(YieldCurve)
 library(chromote)
 library(rvest)
 
-setwd("c:/Users/vidar/Documents/Rwd/macro_dashboard")
+setwd("c:/Users/hd/Rwd/macro_dashboard")
 
 source("R/hjalparfoll.R")
 
